@@ -2,6 +2,7 @@
   "_comment": "Tracks which requirements/*.md files have already been scanned, keyed by filename, so a change is only picked up once per edit. Hash is sha256 of the file's bytes.",
   "scanned": {
     "01-project-setup.md": "ce1d99e96605eddfd1ba1bb450d74632feabf573712aacbb4bf1e7823d09829c",
-    "02-sale-config-and-status.md": "95385545ff96b57acb0867e66043dc045132cb6ccde2d7eb3cb626c4f8601694"
+    "02-sale-config-and-status.md": "95385545ff96b57acb0867e66043dc045132cb6ccde2d7eb3cb626c4f8601694",
+    "03-atomic-purchase-gate.md": "249658ccfc3b57d770414ffcf5429cb94c22526d0f64a999c7c3a6c9248584da"
   }
 }

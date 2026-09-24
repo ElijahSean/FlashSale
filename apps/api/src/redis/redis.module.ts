@@ -1,24 +1,18 @@
 import { Global, Inject, Module, OnApplicationShutdown } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
+import { createRedisClient } from './redis-client';
 
 export const REDIS = Symbol('REDIS');
 
 /**
- * One shared ioredis client for the whole API process.
+ * One shared ioredis client for the whole API process. Its fail-closed options are explained in
+ * redis-client.ts.
  *
- * Why these options (design rule 4, fail closed):
- * - enableOfflineQueue: false. By default ioredis buffers commands while disconnected and
- *   sends them when Redis comes back. For a purchase that would mean a request hangs, then
- *   maybe succeeds minutes later. We want an immediate error so the API can answer 503.
- * - commandTimeout: a connected but stuck Redis also fails fast instead of holding the request.
- * - maxRetriesPerRequest: 1. A command is not silently retried many times.
- * Reconnection itself stays on (default retryStrategy), so the API recovers on its own
- * once Redis is back.
- *
- * The client connects in the background. At startup the sale seeder (02) waits up to 10 s for
- * it and stops the API if Redis never comes up. Once running, a Redis outage does not crash
- * the process: /health reports it and requests get 503 until Redis is back.
+ * The client connects in the background. At startup the sale seeder (02) and the purchase script
+ * loader (03) wait up to 10 s for it and stop the API if Redis never comes up. Once running, a
+ * Redis outage does not crash the process: /health reports it and requests get 503 until Redis
+ * is back.
  */
 @Global()
 @Module({
@@ -27,12 +21,7 @@ export const REDIS = Symbol('REDIS');
       provide: REDIS,
       inject: [ConfigService],
       useFactory: (config: ConfigService) =>
-        new Redis(config.getOrThrow<string>('REDIS_URL'), {
-          enableOfflineQueue: false,
-          commandTimeout: 500,
-          connectTimeout: 1000,
-          maxRetriesPerRequest: 1,
-        }),
+        createRedisClient(config.getOrThrow<string>('REDIS_URL')),
     },
   ],
   exports: [REDIS],

@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import Redis from 'ioredis';
+import { waitForRedisReady } from '../redis/redis-client';
 import { REDIS } from '../redis/redis.module';
 // import type: SaleConfig is an interface, erased at runtime, so decorator metadata cannot
 // reference it (TS1272 with isolatedModules).
@@ -7,10 +8,6 @@ import type { SaleConfig } from './sale-config';
 import { SALE_KEYS } from './sale.keys';
 
 export const SALE_CONFIG = Symbol('SALE_CONFIG');
-
-// How long startup waits for Redis before giving up. In the full stack (07) Compose starts the
-// API only after Redis is healthy and restarts it on exit, so failing here is safe.
-const REDIS_READY_TIMEOUT_MS = 10_000;
 
 /**
  * Writes the sale into Redis on startup, but only the keys that do not exist yet.
@@ -33,7 +30,7 @@ export class SaleSeedService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    await this.waitForRedis();
+    await waitForRedisReady(this.redis);
     const created = await this.seed();
     if (created) {
       this.logger.log(
@@ -69,26 +66,5 @@ export class SaleSeedService implements OnModuleInit {
     const stockReply = results?.at(-1);
     if (!stockReply || stockReply[0]) throw stockReply?.[0] ?? new Error('Sale seed was aborted');
     return stockReply[1] === 'OK';
-  }
-
-  // The shared client has no offline queue (rule 4), so a command sent before the connection
-  // is ready fails at once. Startup waits for "ready" instead, then gives up with a clear error.
-  private async waitForRedis() {
-    if (this.redis.status === 'ready') return;
-    await new Promise<void>((resolve, reject) => {
-      const onReady = () => {
-        clearTimeout(timer);
-        resolve();
-      };
-      const timer = setTimeout(() => {
-        this.redis.off('ready', onReady);
-        reject(
-          new Error(
-            `Redis not reachable within ${REDIS_READY_TIMEOUT_MS / 1000} s, cannot seed the sale. Is it running?`,
-          ),
-        );
-      }, REDIS_READY_TIMEOUT_MS);
-      this.redis.once('ready', onReady);
-    });
   }
 }
