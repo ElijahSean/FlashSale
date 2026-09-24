@@ -31,6 +31,7 @@
     "dotenv": "^18.0.3",
     "jest": "^30.5.2",
     "prisma": "^7.10.0",
+    "testcontainers": "^12.1.0",
     "ts-jest": "^29.4.13",
     "typescript": "^6.0.3"
   }

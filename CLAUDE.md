@@ -52,6 +52,8 @@ Run from the repo root. Prerequisite: Docker Desktop running, `.env` copied from
 - `npm run lint`: ESLint for the whole repo; `npm run format`: Prettier (code only)
 - `npm run prisma:migrate -w apps/api -- --name <change>`: create and apply a migration
 - `npm run prisma:generate -w apps/api`: regenerate the Prisma client (gitignored, under `src/generated`)
+- `docker compose exec redis redis-cli DEL sale:config sale:stock sale:buyers`: reset the sale; the next API start reseeds it from `.env`
+- Integration tests (`*.int.spec.ts`) start their own Redis with Testcontainers, so Docker must be running for `npm test`
 
 Pinned on purpose: NestJS 11 (12 is ESM-only), Prisma 7.10 (npm `latest` is an 8.x RC).
 Git Bash note: `cd` into a subfolder can trip fnm's shell hook; use `-w <workspace>` from the root.

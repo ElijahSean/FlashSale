@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { RedisModule } from './redis/redis.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
+import { SaleModule } from './sale/sale.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { HealthModule } from './health/health.module';
     RedisModule,
     PrismaModule,
     HealthModule,
+    SaleModule,
   ],
 })
 export class AppModule {}

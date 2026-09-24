@@ -16,8 +16,9 @@ export const REDIS = Symbol('REDIS');
  * Reconnection itself stays on (default retryStrategy), so the API recovers on its own
  * once Redis is back.
  *
- * The client connects in the background. The API still boots when Redis is down, so
- * /health can report it instead of the process crashing.
+ * The client connects in the background. At startup the sale seeder (02) waits up to 10 s for
+ * it and stops the API if Redis never comes up. Once running, a Redis outage does not crash
+ * the process: /health reports it and requests get 503 until Redis is back.
  */
 @Global()
 @Module({
