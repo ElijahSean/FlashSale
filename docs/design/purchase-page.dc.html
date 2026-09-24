@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Flash sale purchase page</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@500;600&amp;display=swap">
+<style>
+body{margin:0;font-family:'Hanken Grotesk',system-ui,sans-serif;background:#F6F8FC;color:#0B192D}
+a{color:#095AE9}a:hover{color:#0848C0}
+button{font-family:inherit}
+input{font-family:inherit}
+@keyframes fs-spin{to{transform:rotate(360deg)}}
+.fs-spin{animation:fs-spin .8s linear infinite}
+@media (prefers-reduced-motion: reduce){.fs-spin{animation:none}}
+</style>
+</helmet>
+<div style="width: 1280px; height: 860px; box-sizing: border-box; background: #F6F8FC; display: flex; flex-direction: column;">
+
+  <header style="height: 72px; box-sizing: border-box; padding: 0 48px; background: #07112A; display: flex; align-items: center; justify-content: space-between;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="width: 32px; height: 32px; border-radius: 10px; background: #095AE9; display: flex; align-items: center; justify-content: center;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/></svg>
+      </div>
+      <span style="font-size: 20px; font-weight: 800; color: #FCFCFC; letter-spacing: -0.01em;">Flash Sale</span>
+    </div>
+    <sc-if value="{{signedIn}}" hint-placeholder-val="{{ true }}">
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <span style="font-size: 15px; color: #B7BCC7;">Signed in as <strong style="color: #FCFCFC; font-weight: 600;">{{user}}</strong></span>
+        <button type="button" onClick="{{signOut}}" style="height: 40px; padding: 0 18px; border-radius: 100px; border: 1px solid #3A4560; background: transparent; color: #FCFCFC; font-size: 14px; font-weight: 600; cursor: pointer;">Sign out</button>
+      </div>
+    </sc-if>
+  </header>
+
+  <main style="flex-grow: 1; box-sizing: border-box; padding: 48px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px;">
+
+    <section aria-label="Product" style="background: #FFFFFF; border: 1px solid #D1DAE5; border-radius: 16px; padding: 32px; display: flex; flex-direction: column; gap: 24px;">
+      <div style="flex-grow: 1; min-height: 360px; border-radius: 12px; background: #EEF3FD; border: 1px dashed #9DB8F2; display: flex; align-items: center; justify-content: center; color: #4A6CB3; font-size: 16px; font-weight: 500;">[Product image]</div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <span style="font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #095AE9;">Limited edition</span>
+        <h1 style="margin: 0; font-size: 36px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1;">[Product name]</h1>
+        <div style="display: flex; align-items: baseline; gap: 12px;">
+          <span style="font-size: 28px; font-weight: 700;">[Price]</span>
+          <span style="font-size: 15px; color: #5B6573;">Limit 1 per person</span>
+        </div>
+      </div>
+    </section>
+
+    <section aria-label="Sale" style="display: flex; flex-direction: column; gap: 20px;">
+
+      <div style="background: #FFFFFF; border: 1px solid #D1DAE5; border-radius: 16px; padding: 28px 32px; display: flex; flex-direction: column; gap: 20px;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <span style="display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 14px; border-radius: 100px; font-size: 14px; font-weight: 700; background: {{pill.bg}}; color: {{pill.fg}};">
+            <span style="width: 8px; height: 8px; border-radius: 100px; background: {{pill.dot}};"></span>{{pill.label}}
+          </span>
+          <span style="font-size: 14px; color: #5B6573;">Synced to server time</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <span style="font-size: 15px; font-weight: 600; color: #5B6573;">{{countdownLabel}}</span>
+          <span style="font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 56px; font-weight: 600; letter-spacing: -0.02em; color: #0B192D;">{{countdown}}</span>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; justify-content: space-between; font-size: 15px;">
+            <span style="font-weight: 600;">{{stockLeft}} of {{stockTotal}} left</span>
+            <span style="color: #5B6573;">{{stockHint}}</span>
+          </div>
+          <div style="height: 10px; border-radius: 100px; background: #E6ECF5; overflow: hidden;" role="progressbar" aria-label="Stock remaining" aria-valuemin="0" aria-valuemax="{{stockTotal}}" aria-valuenow="{{stockLeft}}">
+            <div style="height: 10px; border-radius: 100px; background: #095AE9; width: {{stockPct}};"></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="background: #FFFFFF; border: 1px solid #D1DAE5; border-radius: 16px; padding: 28px 32px; display: flex; flex-direction: column; gap: 16px;">
+        <sc-if value="{{signedOut}}" hint-placeholder-val="{{ false }}">
+          <form onSubmit="{{submitSignIn}}" style="display: flex; flex-direction: column; gap: 12px;">
+            <label for="uid" style="font-size: 15px; font-weight: 700;">Username or email</label>
+            <div style="display: flex; gap: 12px;">
+              <input id="uid" type="text" autocomplete="username" value="{{email}}" onChange="{{onEmail}}" placeholder="you@example.com" style="flex-grow: 1; height: 52px; box-sizing: border-box; padding: 0 16px; border-radius: 12px; border: 1px solid {{inputBorder}}; font-size: 16px; color: #0B192D; background: #FFFFFF; outline-color: #095AE9;">
+              <button type="submit" disabled="{{signingIn}}" style="height: 52px; padding: 0 28px; border-radius: 100px; border: none; background: #0B192D; color: #FCFCFC; font-size: 16px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 10px;">
+                <sc-if value="{{signingIn}}" hint-placeholder-val="{{ false }}"><span class="fs-spin" aria-hidden="true" style="width: 16px; height: 16px; box-sizing: border-box; border-radius: 100px; border: 2px solid rgba(252,252,252,0.35); border-top-color: #FCFCFC;"></span></sc-if>{{signInLabel}}
+              </button>
+            </div>
+            <sc-if value="{{hasEmailError}}" hint-placeholder-val="{{ false }}">
+              <span style="font-size: 14px; color: #B42318;">{{emailError}}</span>
+            </sc-if>
+            <span style="font-size: 14px; color: #5B6573;">Sign in to join the sale. One unit per person.</span>
+          </form>
+        </sc-if>
+
+        <sc-if value="{{signedIn}}" hint-placeholder-val="{{ true }}">
+          <button type="button" onClick="{{buy}}" disabled="{{buyDisabled}}" aria-disabled="{{buyDisabled}}" style="height: 64px; border-radius: 100px; border: none; font-size: 20px; font-weight: 800; letter-spacing: -0.01em; cursor: {{buyCursor}}; background: {{buyBg}}; color: {{buyFg}}; display: flex; align-items: center; justify-content: center; gap: 12px;">
+            <sc-if value="{{pending}}" hint-placeholder-val="{{ false }}"><span class="fs-spin" aria-hidden="true" style="width: 20px; height: 20px; box-sizing: border-box; border-radius: 100px; border: 2.5px solid #C9D3E3; border-top-color: #095AE9;"></span></sc-if>{{buyLabel}}
+          </button>
+        </sc-if>
+
+        <div aria-live="polite" style="display: flex; flex-direction: column; gap: 12px;">
+          <sc-if value="{{hasResult}}" hint-placeholder-val="{{ false }}">
+            <div style="border-radius: 12px; padding: 16px 18px; display: flex; gap: 14px; align-items: flex-start; background: {{result.bg}}; border: 1px solid {{result.border}};">
+              <span style="margin-top: 5px; width: 10px; height: 10px; border-radius: 100px; flex-shrink: 0; background: {{result.border}};"></span>
+              <div style="display: flex; flex-direction: column; gap: 4px;">
+                <span style="font-size: 17px; font-weight: 800; color: {{result.fg}};">{{result.title}}</span>
+                <span style="font-size: 15px; color: #33404F; line-height: 1.45;">{{result.body}}</span>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+
+        <sc-if value="{{hasOrderStatus}}" hint-placeholder-val="{{ true }}">
+          <div aria-live="polite" style="display: flex; align-items: center; gap: 12px; padding-top: 16px; border-top: 1px solid #E6ECF5;">
+            <sc-if value="{{orderReserved}}" hint-placeholder-val="{{ true }}"><span class="fs-spin" aria-hidden="true" style="width: 18px; height: 18px; flex-shrink: 0; box-sizing: border-box; border-radius: 100px; border: 2.5px solid #D6E2FB; border-top-color: #095AE9;"></span></sc-if>
+            <sc-if value="{{orderConfirmed}}" hint-placeholder-val="{{ false }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#095AE9" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0;"><path d="M20 6 9 17l-5-5"/></svg></sc-if>
+            <span style="font-size: 15px; color: #33404F;"><strong style="color: #0B192D;">{{orderTitle}}</strong> {{orderText}}</span>
+          </div>
+        </sc-if>
+      </div>
+
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"saleStatus":{"editor":"enum","options":["upcoming","active","sold_out","ended"],"default":"active","section":"Scenario"},"stock":{"editor":"int","min":0,"max":100,"default":42,"section":"Scenario"},"forceOutcome":{"editor":"enum","options":["none","rate_limited","unavailable","session_expired"],"default":"none","section":"Scenario"},"alreadyOwned":{"editor":"boolean","default":false,"section":"Scenario"},"$preview":{"width":1280,"height":860}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    // Local UI state only; the real app gets these from the API
+    this.state = { email: '', emailError: '', user: null, signingIn: false, pending: false, result: null, purchased: false, purchasedAt: 0, tick: 0 };
+  }
+
+  componentDidMount() {
+    // Drives the countdown once per second
+    this.timer = setInterval(() => this.setState((s) => ({ tick: s.tick + 1 })), 1000);
+  }
+
+  componentWillUnmount() { clearInterval(this.timer); }
+
+  componentDidUpdate(prev) {
+    // Switching the scenario resets the demo
+    if (prev.saleStatus !== this.props.saleStatus || prev.stock !== this.props.stock || prev.alreadyOwned !== this.props.alreadyOwned) {
+      this.setState({ tick: 0, result: null, purchased: false, user: null, email: '' });
+    }
+  }
+
+  fmt(sec) {
+    const s = Math.max(0, sec);
+    const pad = (n) => String(n).padStart(2, '0');
+    return pad(Math.floor(s / 3600)) + ':' + pad(Math.floor((s % 3600) / 60)) + ':' + pad(s % 60);
+  }
+
+  renderVals() {
+    const status = this.props.saleStatus ?? 'active';
+    const forced = this.props.forceOutcome ?? 'none';
+    const total = 100;
+    const baseStock = status === 'sold_out' ? 0 : Math.min(total, Math.max(0, this.props.stock ?? 42));
+    const stockLeft = Math.max(0, baseStock - (this.state.purchased ? 1 : 0));
+    const signedIn = !!this.state.user;
+
+    const pills = {
+      upcoming: { label: 'Upcoming', bg: '#E8F0FE', fg: '#0848C0', dot: '#095AE9' },
+      active: { label: 'Live now', bg: '#FFF4DB', fg: '#6B4200', dot: '#FFAE10' },
+      sold_out: { label: 'Sold out', bg: '#FDECE7', fg: '#9A2A12', dot: '#E0552F' },
+      ended: { label: 'Ended', bg: '#EEF1F5', fg: '#4C525C', dot: '#99A0AB' },
+    };
+
+    const base = status === 'upcoming' ? 765 : 1630;
+    const countdownLabel = status === 'upcoming' ? 'Starts in' : status === 'ended' ? 'Sale closed' : 'Ends in';
+    const countdown = status === 'ended' ? '00:00:00' : this.fmt(base - this.state.tick);
+
+    const tones = {
+      success: { bg: '#EAF1FE', border: '#095AE9', fg: '#0848C0' },
+      warn: { bg: '#FFF6E0', border: '#FFAE10', fg: '#6B4200' },
+      neutral: { bg: '#F1F4F8', border: '#99A0AB', fg: '#0B192D' },
+      error: { bg: '#FDECEC', border: '#D93A3A', fg: '#8F1D1D' },
+    };
+    const messages = {
+      SUCCESS: { tone: 'success', title: 'You got one!', body: 'Your unit is reserved. Confirmation takes a few seconds.' },
+      ALREADY_PURCHASED: { tone: 'warn', title: 'You already have one', body: 'It is one per person. Your order status is shown below.' },
+      SOLD_OUT: { tone: 'warn', title: 'Sold out', body: 'All units are gone. Thanks for joining the sale.' },
+      NOT_STARTED: { tone: 'neutral', title: 'Not open yet', body: 'The sale has not started. Try again when the countdown ends.' },
+      ENDED: { tone: 'neutral', title: 'Sale ended', body: 'The sale window has closed.' },
+      RATE_LIMITED: { tone: 'error', title: 'Slow down', body: 'Too many attempts. Wait a moment and try again.' },
+      UNAVAILABLE: { tone: 'error', title: 'Please try again', body: 'Your attempt did not go through. Nothing was reserved.' },
+      SESSION_EXPIRED: { tone: 'neutral', title: 'Session expired', body: 'Please sign in again to continue.' },
+    };
+    const r = this.state.result ? messages[this.state.result] : null;
+    const result = r ? { ...r, ...tones[r.tone] } : { title: '', body: '', bg: '', border: '', fg: '' };
+
+    const canBuy = signedIn && status === 'active' && stockLeft > 0 && !this.state.pending && !this.state.purchased;
+    let buyLabel = 'Buy now';
+    if (this.state.pending) buyLabel = 'Buying…';
+    else if (this.state.purchased) buyLabel = 'Purchased';
+    else if (status === 'upcoming') buyLabel = 'Opens soon';
+    else if (status === 'ended') buyLabel = 'Sale ended';
+    else if (stockLeft === 0) buyLabel = 'Sold out';
+
+    // Order status shows by itself: the real app calls GET /api/purchases/me after sign-in,
+    // then polls it about once a second after a successful buy until it says confirmed.
+    const orderState = !this.state.purchased ? null : (this.state.tick - this.state.purchasedAt >= 3 ? 'confirmed' : 'reserved');
+
+    return {
+      signedIn,
+      signedOut: !signedIn,
+      user: this.state.user || '',
+      email: this.state.email,
+      emailError: this.state.emailError,
+      hasEmailError: !!this.state.emailError,
+      inputBorder: this.state.emailError ? '#B42318' : '#D1DAE5',
+      pill: pills[status],
+      countdownLabel,
+      countdown,
+      stockLeft,
+      stockTotal: total,
+      stockPct: Math.round((stockLeft / total) * 100) + '%',
+      stockHint: stockLeft === 0 ? 'None left' : stockLeft <= 10 ? 'Almost gone' : 'Selling fast',
+      buyDisabled: !canBuy,
+      buyLabel,
+      buyBg: canBuy ? '#095AE9' : this.state.purchased ? '#EAF1FE' : '#E6ECF5',
+      buyFg: canBuy ? '#FCFCFC' : this.state.purchased ? '#0848C0' : '#5B6573',
+      buyCursor: canBuy ? 'pointer' : 'not-allowed',
+      hasResult: !!r,
+      result,
+      pending: this.state.pending,
+      signingIn: this.state.signingIn,
+      signInLabel: this.state.signingIn ? 'Signing in…' : 'Sign in',
+      hasOrderStatus: signedIn && !!orderState,
+      orderReserved: orderState === 'reserved',
+      orderConfirmed: orderState === 'confirmed',
+      orderTitle: orderState === 'confirmed' ? 'Confirmed.' : 'Reserved.',
+      orderText: orderState === 'confirmed' ? 'Your order is saved.' : 'Confirming your order…',
+
+      onEmail: (e) => this.setState({ email: e.target.value, emailError: '' }),
+
+      submitSignIn: (e) => {
+        e.preventDefault();
+        // Same normalization as the API: trim and lowercase
+        const id = this.state.email.trim().toLowerCase();
+        if (!id) return this.setState({ emailError: 'Enter a username or email.' });
+        if (id.length > 254) return this.setState({ emailError: 'That is too long.' });
+        this.setState({ signingIn: true });
+        // Simulates POST /auth/demo-login, then GET /api/purchases/me
+        setTimeout(() => {
+          const owned = !!this.props.alreadyOwned;
+          this.setState({ signingIn: false, user: id, result: null, purchased: owned, purchasedAt: owned ? this.state.tick - 10 : 0 });
+        }, 500);
+      },
+
+      signOut: () => this.setState({ user: null, email: '', result: null, purchased: false }),
+
+      buy: () => {
+        if (!canBuy) return;
+        this.setState({ pending: true, result: null });
+        // Simulates the POST /api/purchases round trip
+        setTimeout(() => {
+          const map = { rate_limited: 'RATE_LIMITED', unavailable: 'UNAVAILABLE', session_expired: 'SESSION_EXPIRED' };
+          if (forced !== 'none') {
+            const res = map[forced];
+            return this.setState({ pending: false, result: res, user: res === 'SESSION_EXPIRED' ? null : this.state.user });
+          }
+          if (this.state.purchased) return this.setState({ pending: false, result: 'ALREADY_PURCHASED' });
+          this.setState({ pending: false, result: 'SUCCESS', purchased: true, purchasedAt: this.state.tick });
+        }, 700);
+      },
+
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="730" viewBox="0 0 1400 730" font-family="Inter, Segoe UI, Helvetica, Arial, sans-serif">
+  <!-- Flash Sale System: architecture diagram -->
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2563eb"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1400" height="730" fill="#ffffff"/>
+
+  <!-- Title -->
+  <text x="40" y="50" font-size="26" font-weight="700" fill="#0f172a">Flash Sale System: Architecture</text>
+  <text x="40" y="76" font-size="14" fill="#475569">Redis is the gate, the queue is the shock absorber, Postgres is the record.</text>
+
+  <!-- Zones -->
+  <rect x="25" y="100" width="1095" height="335" rx="14" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="6 5"/>
+  <text x="42" y="124" font-size="13" font-weight="600" fill="#64748b">HOT PATH · synchronous, answers in milliseconds</text>
+  <rect x="805" y="455" width="570" height="150" rx="14" fill="#fdf8f0" stroke="#d6b98c" stroke-dasharray="6 5"/>
+  <text x="822" y="478" font-size="13" font-weight="600" fill="#a16207">ASYNC PATH · durable record</text>
+
+  <!-- Client -->
+  <rect x="40" y="228" width="170" height="94" rx="10" fill="#e0f2fe" stroke="#0284c7" stroke-width="1.5"/>
+  <text x="125" y="264" font-size="16" font-weight="700" fill="#0c4a6e" text-anchor="middle">React app</text>
+  <text x="125" y="285" font-size="12" fill="#0c4a6e" text-anchor="middle">Vite + Tailwind</text>
+  <text x="125" y="303" font-size="12" fill="#0c4a6e" text-anchor="middle">status · Buy Now</text>
+
+  <!-- nginx -->
+  <rect x="270" y="228" width="180" height="94" rx="10" fill="#ede9fe" stroke="#7c3aed" stroke-width="1.5"/>
+  <text x="360" y="262" font-size="16" font-weight="700" fill="#4c1d95" text-anchor="middle">nginx</text>
+  <text x="360" y="283" font-size="12" fill="#4c1d95" text-anchor="middle">load balancer</text>
+  <text x="360" y="301" font-size="12" fill="#4c1d95" text-anchor="middle">+ serves React build</text>
+  <text x="360" y="342" font-size="11" font-style="italic" fill="#64748b" text-anchor="middle">AWS: ALB + CloudFront/S3</text>
+
+  <!-- API group -->
+  <rect x="505" y="140" width="255" height="270" rx="12" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"/>
+  <text x="632" y="165" font-size="13" font-weight="600" fill="#065f46" text-anchor="middle">API · stateless, scales horizontally</text>
+  <rect x="525" y="176" width="215" height="112" rx="8" fill="#ffffff" stroke="#059669"/>
+  <text x="632" y="197" font-size="15" font-weight="700" fill="#064e3b" text-anchor="middle">API #1</text>
+  <text x="632" y="212" font-size="11" fill="#064e3b" text-anchor="middle">NestJS on Fastify · JWT guard · rate limit</text>
+  <g font-size="11" fill="#065f46" font-family="Consolas, Menlo, monospace">
+    <text x="538" y="230">POST /auth/demo-login</text>
+    <text x="538" y="245">GET  /api/sale</text>
+    <text x="538" y="260">POST /api/purchases</text>
+    <text x="538" y="275">GET  /api/purchases/me</text>
+  </g>
+  <rect x="525" y="300" width="215" height="88" rx="8" fill="#ffffff" stroke="#059669"/>
+  <text x="632" y="330" font-size="15" font-weight="700" fill="#064e3b" text-anchor="middle">API #2 … #N</text>
+  <text x="632" y="350" font-size="12" fill="#064e3b" text-anchor="middle">identical replicas,</text>
+  <text x="632" y="368" font-size="12" fill="#064e3b" text-anchor="middle">same endpoints, no local state</text>
+  <text x="632" y="428" font-size="11" font-style="italic" fill="#64748b" text-anchor="middle">AWS: ECS tasks</text>
+
+  <!-- Redis -->
+  <rect x="820" y="140" width="280" height="270" rx="12" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"/>
+  <text x="960" y="165" font-size="16" font-weight="700" fill="#7f1d1d" text-anchor="middle">Redis</text>
+  <rect x="840" y="178" width="240" height="92" rx="8" fill="#ffffff" stroke="#dc2626"/>
+  <text x="960" y="200" font-size="13" font-weight="700" fill="#7f1d1d" text-anchor="middle">Purchase gate · Lua script</text>
+  <text x="960" y="220" font-size="12" fill="#7f1d1d" text-anchor="middle">window? bought? stock left?</text>
+  <text x="960" y="238" font-size="12" fill="#7f1d1d" text-anchor="middle">then DECR + SADD, atomically</text>
+  <text x="960" y="258" font-size="11" fill="#991b1b" text-anchor="middle" font-family="Consolas, Menlo, monospace">sale:stock  sale:buyers</text>
+  <rect x="840" y="280" width="240" height="36" rx="8" fill="#ffffff" stroke="#dc2626"/>
+  <text x="960" y="303" font-size="12" fill="#7f1d1d" text-anchor="middle">Rate-limit counters (per user)</text>
+  <rect x="840" y="326" width="240" height="68" rx="8" fill="#ffffff" stroke="#dc2626"/>
+  <text x="960" y="352" font-size="13" font-weight="700" fill="#7f1d1d" text-anchor="middle">BullMQ queue · orders</text>
+  <text x="960" y="372" font-size="12" fill="#7f1d1d" text-anchor="middle">jobId = userId (idempotent)</text>
+  <text x="1110" y="428" font-size="11" font-style="italic" fill="#64748b" text-anchor="end">AWS: ElastiCache (+ SQS for the queue)</text>
+
+  <!-- Worker -->
+  <rect x="820" y="495" width="280" height="84" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="1.5"/>
+  <text x="960" y="528" font-size="16" font-weight="700" fill="#7c2d12" text-anchor="middle">Order worker</text>
+  <text x="960" y="548" font-size="12" fill="#7c2d12" text-anchor="middle">retries with backoff · dead-letter</text>
+  <text x="960" y="596" font-size="11" font-style="italic" fill="#64748b" text-anchor="middle">AWS: ECS task / Lambda</text>
+
+  <!-- Postgres -->
+  <rect x="1165" y="495" width="195" height="84" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="1.5"/>
+  <text x="1262" y="528" font-size="16" font-weight="700" fill="#1e3a8a" text-anchor="middle">PostgreSQL</text>
+  <text x="1262" y="548" font-size="12" fill="#1e3a8a" text-anchor="middle">orders · UNIQUE(userId)</text>
+  <text x="1240" y="596" font-size="11" font-style="italic" fill="#64748b" text-anchor="middle">AWS: RDS</text>
+
+  <!-- Arrows -->
+  <g stroke="#334155" stroke-width="2" fill="none" marker-end="url(#arrow)">
+    <line x1="210" y1="275" x2="268" y2="275"/>
+    <line x1="450" y1="275" x2="503" y2="275"/>
+    <line x1="760" y1="224" x2="838" y2="224"/>
+    <line x1="760" y1="360" x2="838" y2="360"/>
+    <line x1="960" y1="394" x2="960" y2="493"/>
+    <line x1="1100" y1="537" x2="1163" y2="537"/>
+  </g>
+
+  <!-- Read path: API to Postgres (purchase lookup) -->
+  <path d="M745,410 L745,705 L1330,705 L1330,581" fill="none" stroke="#2563eb" stroke-width="1.8" stroke-dasharray="6 4" marker-end="url(#arrowBlue)"/>
+  <text x="1000" y="698" font-size="11" fill="#1e3a8a" text-anchor="middle">lookup: is this user's order confirmed?</text>
+
+  <!-- Arrow labels -->
+  <g font-size="10" fill="#334155" text-anchor="middle">
+    <text x="789" y="242">check +</text><text x="789" y="254">reserve</text>
+    <text x="789" y="377">enqueue</text>
+  </g>
+
+  <!-- Step badges -->
+  <g font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">
+    <circle cx="239" cy="258" r="11" fill="#0f172a"/><text x="239" y="262">1</text>
+    <circle cx="477" cy="258" r="11" fill="#0f172a"/><text x="477" y="262">2</text>
+    <circle cx="789" cy="207" r="11" fill="#0f172a"/><text x="789" y="211">3</text>
+    <circle cx="789" cy="343" r="11" fill="#0f172a"/><text x="789" y="347">4</text>
+    <circle cx="978" cy="445" r="11" fill="#0f172a"/><text x="978" y="449">5</text>
+    <circle cx="1132" cy="520" r="11" fill="#0f172a"/><text x="1132" y="524">6</text>
+  </g>
+
+  <!-- Legend -->
+  <rect x="40" y="455" width="680" height="235" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="60" y="482" font-size="14" font-weight="700" fill="#0f172a">How a purchase flows</text>
+  <g font-size="13" fill="#334155">
+    <text x="60" y="508"><tspan font-weight="700">1</tspan>  Signed-in user clicks Buy Now: POST /api/purchases + Bearer token (demo JWT)</text>
+    <text x="60" y="530"><tspan font-weight="700">2</tspan>  nginx sends the request to any API replica</text>
+    <text x="60" y="552"><tspan font-weight="700">3</tspan>  API runs the Lua script: one atomic check-and-reserve, no race possible</text>
+    <text x="60" y="574"><tspan font-weight="700">4</tspan>  On success, API enqueues the order and replies 201 in ms (or 401 / 409 / 410 / 403 / 429 / 503)</text>
+    <text x="60" y="596"><tspan font-weight="700">5</tspan>  Worker consumes the order off the hot path</text>
+    <text x="60" y="618"><tspan font-weight="700">6</tspan>  Worker inserts into Postgres; UNIQUE(userId) is the second guard</text>
+    <line x1="60" y1="632" x2="700" y2="632" stroke="#e2e8f0"/>
+    <text x="60" y="654"><tspan font-weight="700">Reads</tspan>  GET /api/sale: status + stock from Redis (cached ~1 s, polled every 2 s)</text>
+    <text x="60" y="676"><tspan font-weight="700">Reads</tspan>  GET /api/purchases/me: Postgres = confirmed, else Redis = reserved</text>
+  </g>
+</svg>

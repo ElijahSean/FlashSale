@@ -1,0 +1,6 @@
+{
+  "_comment": "Tracks which requirements/*.md files have already been scanned, keyed by filename, so a change is only picked up once per edit. Hash is sha256 of the file's bytes.",
+  "scanned": {
+    "01-project-setup.md": "ce1d99e96605eddfd1ba1bb450d74632feabf573712aacbb4bf1e7823d09829c"
+  }
+}

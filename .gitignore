@@ -1,0 +1,31 @@
+# deps
+node_modules/
+
+# builds
+dist/
+build/
+*.tsbuildinfo
+coverage/
+
+# env and secrets: never commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# logs and caches
+*.log
+npm-debug.log*
+.cache/
+
+# stress test raw output (summaries go in docs/stress-results.md)
+stress/out/
+
+# editors / os
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+apps/api/src/generated/

@@ -1,0 +1,12 @@
+# Development only. Compose merges this file automatically on `docker compose up`.
+# Publishes the data stores on 127.0.0.1 (not 0.0.0.0) so Node apps running on the host
+# can reach them, while other machines on the network cannot.
+# Reviewers and stress runs use `docker compose -f docker-compose.yml ...` to skip it.
+
+services:
+  redis:
+    ports:
+      - '127.0.0.1:6379:6379'
+  postgres:
+    ports:
+      - '127.0.0.1:5432:5432'

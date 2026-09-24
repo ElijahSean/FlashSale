@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+apps/api/src/generated
+apps/api/prisma/migrations
+
+# Prettier formats code only. Docs, requirements and design canvases are written by hand.
+*.md
+docs/
+.claude/
+.dev-loop/

@@ -1,0 +1,27 @@
+{
+  "name": "flashsale",
+  "private": true,
+  "workspaces": [
+    "apps/api",
+    "apps/worker",
+    "apps/web",
+    "stress"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w apps/api",
+    "test": "npm test --workspaces --if-present",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.11.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.12.0",
+    "prettier": "^3.9.9",
+    "typescript-eslint": "^8.70.1"
+  }
+}
