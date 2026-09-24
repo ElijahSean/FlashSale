@@ -48,12 +48,14 @@ Run from the repo root. Prerequisite: Docker Desktop running, `.env` copied from
 
 - `docker compose up -d redis postgres`: start the data stores (dev override publishes them on 127.0.0.1)
 - `npm run dev`: API in watch mode on port 3000 (`GET /health`)
+- `npm run dev:worker`: build and run the order worker (consumes the `orders` queue, writes to Postgres)
 - `npm test`: all workspace tests
 - `npm run lint`: ESLint for the whole repo; `npm run format`: Prettier (code only)
 - `npm run prisma:migrate -w apps/api -- --name <change>`: create and apply a migration
-- `npm run prisma:generate -w apps/api`: regenerate the Prisma client (gitignored, under `src/generated`)
+- `npm run prisma:generate -w apps/api`: regenerate the Prisma clients for the API and the worker (gitignored, under `src/generated`)
 - `docker compose exec redis redis-cli DEL sale:config sale:stock sale:buyers`: reset the sale; the next API start reseeds it from `.env`
-- Integration tests (`*.int.spec.ts`) start their own Redis with Testcontainers, so Docker must be running for `npm test`
+- Integration tests (`*.int.spec.ts`) start their own Redis and Postgres with Testcontainers, so Docker must be running for `npm test`
+- Worker tests run Jest with `--experimental-vm-modules`: Prisma 7 loads its query engine with a dynamic `import()`
 
 Pinned on purpose: NestJS 11 (12 is ESM-only), Prisma 7.10 (npm `latest` is an 8.x RC).
 Git Bash note: `cd` into a subfolder can trip fnm's shell hook; use `-w <workspace>` from the root.

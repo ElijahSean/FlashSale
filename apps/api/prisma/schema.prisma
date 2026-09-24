@@ -1,10 +1,22 @@
-// Single source of truth for the database. The worker (requirement 04) generates its
-// client from this same file.
+// Single source of truth for the database. One `prisma generate` writes a client for the API
+// and one for the worker (04), so the two can never disagree about the schema.
 
 generator client {
   provider     = "prisma-client"
   output       = "../src/generated/prisma"
   moduleFormat = "cjs"
+  // No '.js' on imports between generated files: Jest (ts-jest) cannot map them to the .ts
+  // files. Left unset, Prisma picks the extension itself, and it picked '.js'.
+  importFileExtension = ""
+}
+
+generator worker {
+  provider     = "prisma-client"
+  output       = "../../worker/src/generated/prisma"
+  moduleFormat = "cjs"
+  // No '.js' on imports between generated files: Jest (ts-jest) cannot map them to the .ts
+  // files. Left unset, Prisma picks the extension itself, and it picked '.js'.
+  importFileExtension = ""
 }
 
 datasource db {

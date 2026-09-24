@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "dev": "npm run dev -w apps/api",
+    "dev:worker": "npm run dev -w apps/worker",
     "test": "npm test --workspaces --if-present",
     "lint": "eslint .",
     "format": "prettier --write ."

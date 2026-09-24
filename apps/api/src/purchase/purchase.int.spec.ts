@@ -3,6 +3,7 @@ import Redis from 'ioredis';
 import { GenericContainer, StartedTestContainer } from 'testcontainers';
 import { createRedisClient, waitForRedisReady } from '../redis/redis-client';
 import { SALE_KEYS } from '../sale/sale.keys';
+import { OrderQueue } from './order-queue';
 import { PurchaseResult, PurchaseService } from './purchase.service';
 
 // The purchase gate against a real Redis (Testcontainers). No Redis mocks: the point is to prove
@@ -10,6 +11,9 @@ import { PurchaseResult, PurchaseService } from './purchase.service';
 jest.setTimeout(120_000);
 
 const HOUR = 3_600_000;
+// These tests call attempt() and release(), which never touch the order queue (that is 04's
+// purchase(), tested in order-queue.int.spec.ts). An empty stand-in keeps them about the script.
+const noQueue = {} as OrderQueue;
 
 describe('PurchaseService (Lua gate) with real Redis', () => {
   let container: StartedTestContainer;
@@ -28,7 +32,7 @@ describe('PurchaseService (Lua gate) with real Redis', () => {
     admin = new Redis(url);
     client = createRedisClient(url);
     await waitForRedisReady(client);
-    service = new PurchaseService(client);
+    service = new PurchaseService(client, noQueue);
     await service.onModuleInit();
   });
 
@@ -133,7 +137,7 @@ describe('PurchaseService (Lua gate) with real Redis', () => {
     beforeAll(async () => {
       replicaClients = Array.from({ length: 10 }, () => createRedisClient(url));
       await Promise.all(replicaClients.map((c) => waitForRedisReady(c)));
-      replicas = replicaClients.map((c) => new PurchaseService(c));
+      replicas = replicaClients.map((c) => new PurchaseService(c, noQueue));
       await Promise.all(replicas.map((r) => r.onModuleInit()));
     });
 
@@ -196,7 +200,7 @@ describe('PurchaseService (Lua gate) with real Redis', () => {
     it('Redis unreachable: attempt throws 503, no fallback', async () => {
       const dead = createRedisClient('redis://127.0.0.1:1'); // nothing listens on port 1
       try {
-        await expect(new PurchaseService(dead).attempt('alice')).rejects.toBeInstanceOf(
+        await expect(new PurchaseService(dead, noQueue).attempt('alice')).rejects.toBeInstanceOf(
           ServiceUnavailableException,
         );
       } finally {

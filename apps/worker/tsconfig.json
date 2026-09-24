@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node", "jest"]
+  },
+  // Type checking and tests only. No rootDir or outDir here: the end-to-end test imports the
+  // API's real PurchaseService from outside src. tsconfig.build.json sets both for the build.
+  "include": ["src"]
+}

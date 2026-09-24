@@ -3,6 +3,7 @@
   "scanned": {
     "01-project-setup.md": "ce1d99e96605eddfd1ba1bb450d74632feabf573712aacbb4bf1e7823d09829c",
     "02-sale-config-and-status.md": "95385545ff96b57acb0867e66043dc045132cb6ccde2d7eb3cb626c4f8601694",
-    "03-atomic-purchase-gate.md": "249658ccfc3b57d770414ffcf5429cb94c22526d0f64a999c7c3a6c9248584da"
+    "03-atomic-purchase-gate.md": "249658ccfc3b57d770414ffcf5429cb94c22526d0f64a999c7c3a6c9248584da",
+    "04-order-queue-and-worker.md": "ed42b02bb9d036e70cacad407bd058dbce5429add7d09c994412ed41ae690fa3"
   }
 }
