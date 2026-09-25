@@ -1,6 +1,8 @@
-# Local stand-in for managed cloud services (Redis = ElastiCache, Postgres = RDS).
-# No ports are published here: data stores are reachable only on the internal network.
-# docker-compose.override.yml opens them to localhost for development only.
+# The whole system (requirement 07): `docker compose up --build`, then http://localhost:8080.
+# Local stand-ins for managed cloud services (Redis = ElastiCache, Postgres = RDS, nginx = a load
+# balancer). Only nginx publishes a port. The data stores are reachable only on the internal
+# network; docker-compose.override.yml opens them to localhost for development only.
+# docker-compose.stress.yml adds the stress-test settings and k6 (see README).
 
 services:
   redis:
@@ -31,6 +33,93 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  # One-shot: applies the committed Prisma migrations, then exits. The API and the worker start
+  # only after it finished successfully, so neither ever sees a missing orders table.
+  migrate:
+    build: { context: ., target: migrate }
+    environment:
+      # A POSTGRES_PASSWORD with URL characters (@ : / #) would need encoding here.
+      DATABASE_URL: &database-url postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [internal]
+    restart: 'no'
+
+  # Two API replicas behind nginx (07), written as two services from one definition (&api below).
+  # They share nothing but Redis and Postgres (rule 7), which is what lets the stress tests prove
+  # the rules hold across instances.
+  #
+  # Why not one service with `deploy.replicas: 2`: nginx would then know both replicas by one name,
+  # and nginx retries a failed request only on a different server line. When one replica was
+  # stopped, requests sent to it failed with 504 instead of moving to the other one. Two names give
+  # nginx two server lines, and the failover test passes.
+  api1: &api
+    build: { context: ., target: api }
+    # Settings are listed one by one instead of passing the whole .env: each container gets only
+    # what it uses. Service names (redis, postgres) replace the localhost addresses in .env.
+    environment:
+      REDIS_URL: &redis-url redis://redis:6379
+      DATABASE_URL: *database-url
+      PORT: 3000
+      SALE_STARTS_AT: ${SALE_STARTS_AT:?set in .env}
+      SALE_ENDS_AT: ${SALE_ENDS_AT:?set in .env}
+      SALE_STOCK: ${SALE_STOCK:?set in .env}
+      PRODUCT_NAME: ${PRODUCT_NAME:?set in .env}
+      PRODUCT_PRICE: ${PRODUCT_PRICE:?set in .env}
+      PRODUCT_IMAGE_URL: ${PRODUCT_IMAGE_URL:-}
+      JWT_SECRET: ${JWT_SECRET:?set in .env}
+      # The page and the API share nginx's origin. Only this origin may call the API from a browser.
+      WEB_ORIGIN: http://localhost:8080
+      RATE_LIMIT_USER_PER_SEC: ${RATE_LIMIT_USER_PER_SEC:-5}
+      RATE_LIMIT_IP_PER_SEC: ${RATE_LIMIT_IP_PER_SEC:-50}
+      # Trust X-Forwarded-For only from private addresses: nginx on this Docker network.
+      TRUST_PROXY: uniquelocal
+      # One log line per request, so `docker compose logs api1 api2` shows both serving.
+      LOG_REQUESTS: 'true'
+    depends_on:
+      redis: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    networks: [internal]
+    # /health answers 503 when Redis or Postgres is down, so Docker marks the replica unhealthy.
+    # wget comes with the Alpine base image; no curl needed.
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:3000/health']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  api2: *api
+
+  worker:
+    build: { context: ., target: worker }
+    environment:
+      REDIS_URL: *redis-url
+      DATABASE_URL: *database-url
+    depends_on:
+      redis: { condition: service_healthy }
+      migrate: { condition: service_completed_successfully }
+    networks: [internal]
+    restart: unless-stopped
+
+  # The only published port: the web page and the API, reachable from this machine only.
+  nginx:
+    build: { context: ., target: web }
+    ports:
+      - '127.0.0.1:8080:8080'
+    depends_on:
+      api1: { condition: service_healthy }
+      api2: { condition: service_healthy }
+    networks: [internal]
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:8080/']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
 
 networks:
   internal:

@@ -1,4 +1,4 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnApplicationShutdown } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/prisma/client';
@@ -9,14 +9,16 @@ import { PrismaClient } from '../generated/prisma/client';
  * boots even when Postgres is down and /health reports it.
  */
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleDestroy {
+export class PrismaService extends PrismaClient implements OnApplicationShutdown {
   constructor(config: ConfigService) {
     super({
       adapter: new PrismaPg({ connectionString: config.getOrThrow<string>('DATABASE_URL') }),
     });
   }
 
-  async onModuleDestroy() {
+  // After the HTTP server has stopped, like the queue (see OrderQueue): /me calls still in flight
+  // during a shutdown finish with a working database connection.
+  async onApplicationShutdown() {
     await this.$disconnect();
   }
 }

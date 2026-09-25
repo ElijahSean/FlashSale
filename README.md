@@ -2,7 +2,69 @@
 
 A high-throughput flash sale for a single product with limited stock. Each user can buy at most one unit, and the system must never oversell, even under heavy concurrent load.
 
-<!-- TODO: Quick start, running tests, stress test results -->
+## Quick start
+
+Needs Docker (Docker Desktop on Windows or macOS) and, for the tests and `npm run verify`, Node.js 22.18 or newer.
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+Open **http://localhost:8080** once all containers are healthy (the first build takes a few minutes). Enter any name or email, then press Buy.
+
+- The placeholder `JWT_SECRET` and `ADMIN_TOKEN` in `.env.example` work, but change them for anything but a local demo: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`.
+- The sale window, stock and product come from `.env` (`SALE_*`, `PRODUCT_*`). They are seeded into Redis on first start only; to apply changes, run `docker compose down -v` (this deletes all data) and start again.
+- `docker compose up` also reads `docker-compose.override.yml`, which opens Redis on port 6379 and Postgres on 5432 to this machine (for development). If those ports are taken, use `docker compose -f docker-compose.yml up --build`.
+- `docker compose logs -f api1 api2` shows one line per request from each API replica.
+
+## Running the tests
+
+```bash
+npm install
+npm test
+```
+
+Runs every workspace: API and worker (Jest; the integration tests start their own Redis and Postgres with Testcontainers, so Docker must be running) and the web app (Vitest and React Testing Library). The key tests: no oversell (N stock, many buyers, exactly N wins), one per user (one user, many parallel requests, one win), idempotency (a retried job or insert does one thing) and fail closed (Redis down gives 503).
+
+## Stress tests
+
+k6 runs in a container and calls nginx, so every test covers the whole path: nginx, both API replicas, Redis, the queue, the worker and Postgres. Results from our machine are in [docs/stress-results.md](docs/stress-results.md).
+
+```bash
+npm install                  # once, for npm run verify
+npm run stress:up            # the full stack with stress settings (see below)
+npm run stress:stampede      # then: npm run verify
+npm run stress:greedy        # then: npm run verify
+npm run stress:window        # then: npm run verify
+npm run stress:failover      # about 10 s in, in a second terminal: docker compose stop api1
+npm run verify               # then: docker compose start api1
+npm run stress:down          # stop everything (data is kept)
+```
+
+`npm run stress:up` layers `docker-compose.stress.yml` on top of the normal stack. It turns on the test-only reset route (`POST /api/admin/reset`, needs the `X-Admin-Token` header), and it **raises the rate limits**: all k6 users share one IP address, so the normal limit of 50 requests per second per IP would answer 429 and test the limiter instead of the purchase gate. Each scenario resets the sale itself, so they run in any order.
+
+| Scenario | Load | Expected outcome |
+| --- | --- | --- |
+| `stampede` | 10,000 users, stock 100 | exactly 100 × 201, 9,900 × 410, zero 5xx |
+| `greedy` | 500 users × 20 parallel requests, stock 100 | nobody gets more than one 201 |
+| `window` | 1,000 users before the start, 1,000 after the end | all 403 (`NOT_STARTED`, then `ENDED`), stock untouched |
+| `failover` | 50 users per second for 30 s, one API replica stopped | no failed purchase |
+
+k6 prints a check mark for each threshold and exits with code 99 if any count is wrong. `npm run verify` then waits for the worker to empty the queue and checks that Redis and Postgres agree: stock left + buyers = initial stock, and every buyer has exactly one order. It prints `PASS` or `FAIL`.
+
+## Development
+
+Run the data stores in Docker and the apps on the host with reload:
+
+```bash
+docker compose up -d redis postgres
+npm run dev          # API on http://localhost:3000
+npm run dev:worker   # order worker
+npm run dev:web      # web app on http://localhost:5173
+```
+
+The first time, generate the Prisma clients and create the tables: `npm run prisma:generate -w apps/api`, then `npm run prisma:migrate -w apps/api`. The values in `.env.example` already fit this mode (for example `WEB_ORIGIN=http://localhost:5173`).
 
 ## API
 
@@ -13,6 +75,7 @@ A high-throughput flash sale for a single product with limited stock. Each user 
 | POST | `/api/purchases` | Attempt a purchase. Header `Authorization: Bearer <token>`, no body; the userId comes from the token |
 | GET | `/api/purchases/me` | Check if the signed-in user secured an item: `reserved` (in Redis, queued) or `confirmed` (saved in Postgres) |
 | GET | `/health` | Liveness of the API, Redis and Postgres |
+| POST | `/api/admin/reset` | Test only, for the stress runs. Exists only when `ENABLE_ADMIN=true`, otherwise 404. Needs `X-Admin-Token`. Empties buyers, orders and the queue and restores the stock; optional body `{ stock, startsInSeconds, durationSeconds }` |
 
 Purchase results:
 
@@ -60,7 +123,7 @@ Every purchase attempt runs as one atomic Lua script in Redis. The script checks
 
 ### Two guards, one rule
 
-"One item per user" is enforced twice: by the Redis buyers set (fast, during the sale) and by the Postgres unique index (permanent). The queue job ID is the `userId`, so retries can never create a second order.
+"One item per user" is enforced twice: by the Redis buyers set (fast, during the sale) and by the Postgres unique index (permanent). The queue job ID is derived from the `userId` (`order-<userId>`), so retries can never create a second order.
 
 ### Fail closed
 
@@ -121,7 +184,7 @@ The brief allows cloud services to be mocked, so Docker Compose plays the role o
 | --- | --- | --- |
 | `redis` | ElastiCache | Stock, buyers set, rate limits, and the BullMQ queue |
 | `postgres` | RDS | Permanent order records |
-| `api` × 2 | ECS tasks | NestJS on Fastify; two replicas prove the rules hold across instances |
+| `api1`, `api2` | ECS tasks | NestJS on Fastify; two replicas prove the rules hold across instances |
 | `worker` | ECS task reading from SQS | Moves orders from the queue into Postgres |
 | `nginx` | Application Load Balancer + CloudFront/S3 | Load-balances the API and serves the React build |
 | `k6` (on demand) | Load testing service | Runs the stress tests through nginx, like real traffic |

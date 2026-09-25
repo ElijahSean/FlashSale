@@ -21,5 +21,10 @@ export default tseslint.config(
     ...reactHooks.configs.flat.recommended,
     languageOptions: { globals: globals.browser },
   },
+  // k6 scripts run inside k6, which provides __ENV (the -e and container environment values).
+  {
+    files: ['stress/**/*.js'],
+    languageOptions: { globals: { __ENV: 'readonly' } },
+  },
   prettier,
 );

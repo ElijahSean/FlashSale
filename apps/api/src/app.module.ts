@@ -7,6 +7,7 @@ import { HealthModule } from './health/health.module';
 import { SaleModule } from './sale/sale.module';
 import { AuthModule } from './auth/auth.module';
 import { PurchaseModule } from './purchase/purchase.module';
+import { adminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -19,6 +20,8 @@ import { PurchaseModule } from './purchase/purchase.module';
     SaleModule,
     AuthModule,
     PurchaseModule,
+    // Test-only reset route (07), loaded only when ENABLE_ADMIN=true.
+    adminModule(),
   ],
 })
 export class AppModule {}

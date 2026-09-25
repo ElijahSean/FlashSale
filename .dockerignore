@@ -1,0 +1,16 @@
+# Keeps the build context small and secret-free. Never send .env into an image (rule 11): the
+# containers get their settings from Compose at run time.
+.env
+.env.*
+!.env.example
+.git
+**/node_modules
+**/dist
+**/coverage
+**/src/generated
+stress/out
+docs
+requirements
+.claude
+.dev-loop
+*.md

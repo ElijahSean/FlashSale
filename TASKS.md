@@ -11,5 +11,5 @@ place that answers "where are we". Deadline: **Sep 30**.
 | 04 | Order queue and worker | 03 | done |
 | 05 | Demo login, AuthGuard and purchase endpoints | 03, 04 | done |
 | 06 | Purchase frontend | 05 | done |
-| 07 | Full stack in Docker and stress tests | 06 | todo |
+| 07 | Full stack in Docker and stress tests | 06 | done |
 | S | Submission: README final, repo public, email link (manual) | 07 | todo |

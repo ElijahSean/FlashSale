@@ -17,5 +17,7 @@ import { SaleService } from './sale.service';
     SaleSeedService,
     SaleService,
   ],
+  // The admin reset (07) restores the .env values from this parsed config.
+  exports: [SALE_CONFIG],
 })
 export class SaleModule {}

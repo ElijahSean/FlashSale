@@ -1,0 +1,41 @@
+# Stress-test settings (requirement 07), layered on top of docker-compose.yml. The npm scripts pass
+# both files, for example `npm run stress:up` runs
+#   docker compose -f docker-compose.yml -f docker-compose.stress.yml up -d --build --wait
+# Plain `docker compose up` never reads this file, so admin stays off and the limits stay low.
+
+services:
+  # Published on 127.0.0.1 so `npm run verify` on this machine can read the final state.
+  redis:
+    ports:
+      - '127.0.0.1:6379:6379'
+  postgres:
+    ports:
+      - '127.0.0.1:5432:5432'
+
+  # Added to both API replicas' settings.
+  api1: &stress-api
+    environment:
+      # Each k6 script resets the sale in its setup() (POST /api/admin/reset).
+      ENABLE_ADMIN: 'true'
+      ADMIN_TOKEN: ${ADMIN_TOKEN:?set in .env}
+      # k6 runs in one container, so every virtual user shares one IP address. The normal per-IP
+      # limit (50/s) would turn the stampede into 429s and test the limiter, not the gate. The
+      # per-user limit is raised so each greedy user's 20 parallel requests all reach Lua.
+      RATE_LIMIT_IP_PER_SEC: 1000000
+      RATE_LIMIT_USER_PER_SEC: 1000
+  api2: *stress-api
+
+  # The load generator. Only runs on demand: `docker compose ... run --rm k6 run /scripts/<name>.js`.
+  # It calls nginx like a browser would, so the test covers the whole path: nginx, both API
+  # replicas, Redis, the queue and the worker.
+  k6:
+    image: grafana/k6:2.3.0
+    profiles: [k6]
+    volumes:
+      - ./stress:/scripts:ro
+    environment:
+      BASE_URL: http://nginx:8080
+      ADMIN_TOKEN: ${ADMIN_TOKEN:?set in .env}
+    depends_on:
+      nginx: { condition: service_healthy }
+    networks: [internal]

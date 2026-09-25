@@ -9,6 +9,6 @@ import { PurchaseService } from './purchase.service';
   imports: [AuthModule], // AuthGuard and the JwtService it verifies with
   controllers: [PurchaseController],
   providers: [OrderQueue, PurchaseService, PurchaseStatusService],
-  exports: [PurchaseService],
+  exports: [PurchaseService, OrderQueue], // OrderQueue: the admin reset (07) empties it
 })
 export class PurchaseModule {}

@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
 import { JobsOptions, Queue } from 'bullmq';
 import Redis from 'ioredis';
 import { waitForRedisReady } from '../redis/redis-client';
@@ -35,7 +35,7 @@ export const ORDER_JOB_OPTIONS = {
  * and writes them to Postgres, so no buyer ever waits on the database.
  */
 @Injectable()
-export class OrderQueue implements OnModuleInit, OnModuleDestroy {
+export class OrderQueue implements OnModuleInit, OnApplicationShutdown {
   private readonly logger = new Logger(OrderQueue.name);
   readonly queue: Queue<OrderJob>;
 
@@ -67,7 +67,14 @@ export class OrderQueue implements OnModuleInit, OnModuleDestroy {
     await this.queue.close();
   }
 
-  async onModuleDestroy() {
+  /**
+   * Closed at the very end of shutdown, not in onModuleDestroy. Nest runs onModuleDestroy before
+   * it stops the HTTP server, so a purchase still in flight would reserve a unit, find the queue
+   * closed, release the unit and answer 503. onApplicationShutdown runs after the server has
+   * stopped taking requests and finished the ones it had, so stopping one API replica (07) does
+   * not fail anyone's purchase.
+   */
+  async onApplicationShutdown() {
     await this.close();
   }
 }

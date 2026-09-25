@@ -13,10 +13,17 @@
     "dev:web": "npm run dev -w apps/web",
     "test": "npm test --workspaces --if-present",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "stress:up": "docker compose -f docker-compose.yml -f docker-compose.stress.yml up -d --build --wait",
+    "stress:stampede": "docker compose -f docker-compose.yml -f docker-compose.stress.yml run --rm k6 run /scripts/stampede.js",
+    "stress:greedy": "docker compose -f docker-compose.yml -f docker-compose.stress.yml run --rm k6 run /scripts/greedy.js",
+    "stress:window": "docker compose -f docker-compose.yml -f docker-compose.stress.yml run --rm k6 run /scripts/window.js",
+    "stress:failover": "docker compose -f docker-compose.yml -f docker-compose.stress.yml run --rm k6 run /scripts/failover.js",
+    "stress:down": "docker compose -f docker-compose.yml -f docker-compose.stress.yml down",
+    "verify": "node stress/verify.ts"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.18"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

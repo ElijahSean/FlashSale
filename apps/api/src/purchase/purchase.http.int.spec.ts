@@ -73,7 +73,10 @@ describe('purchase API over HTTP', () => {
   });
 
   /** Boots the API modules the way main.ts does, with env values supplied by the test. */
-  async function boot(env: Record<string, string> = {}) {
+  async function boot(
+    env: Record<string, string> = {},
+    adapter: Parameters<typeof createAdapter>[0] = {},
+  ) {
     const moduleRef = await Test.createTestingModule({
       imports: [
         ConfigModule.forRoot({
@@ -87,7 +90,7 @@ describe('purchase API over HTTP', () => {
         PurchaseModule,
       ],
     }).compile();
-    const app = moduleRef.createNestApplication<NestFastifyApplication>(createAdapter());
+    const app = moduleRef.createNestApplication<NestFastifyApplication>(createAdapter(adapter));
     await configureApp(app);
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
@@ -360,6 +363,70 @@ describe('purchase API over HTTP', () => {
       expect(await login4()).toEqual([200, 200, 200, 429]);
       await new Promise((r) => setTimeout(r, 1100));
       expect((await login(app, 'w5', '10.0.0.30')).statusCode).toBe(200);
+    });
+
+    // Behind nginx (07) every request arrives from nginx's address. TRUST_PROXY makes the API read
+    // the client address from X-Forwarded-For, but only when the sender is a trusted proxy.
+    describe('behind a trusted proxy (TRUST_PROXY)', () => {
+      const NGINX = '172.18.0.5'; // a Docker network address, inside "uniquelocal"
+      let proxied: NestFastifyApplication;
+      beforeAll(async () => {
+        proxied = await boot(
+          { RATE_LIMIT_USER_PER_SEC: '2', RATE_LIMIT_IP_PER_SEC: '3' },
+          { trustProxy: 'uniquelocal' },
+        );
+      });
+
+      const loginVia = (
+        target: NestFastifyApplication,
+        from: string,
+        client: string,
+        user: string,
+      ) =>
+        target.inject({
+          method: 'POST',
+          url: '/api/auth/demo-login',
+          payload: { userId: user },
+          remoteAddress: from,
+          headers: { 'x-forwarded-for': client },
+        });
+
+      it('counts each client address, not the proxy address', async () => {
+        await setSale();
+        const codes = [];
+        for (const n of [1, 2, 3, 4]) {
+          codes.push((await loginVia(proxied, NGINX, `203.0.113.${n}`, `x${n}`)).statusCode);
+        }
+        // Four clients through one proxy: four separate counters, nobody limited.
+        expect(codes).toEqual([200, 200, 200, 200]);
+        // One client through the proxy is still limited on its fourth request.
+        const same = [];
+        for (const n of [1, 2, 3, 4]) {
+          same.push((await loginVia(proxied, NGINX, '203.0.113.50', `y${n}`)).statusCode);
+        }
+        expect(same).toEqual([200, 200, 200, 429]);
+      });
+
+      it('ignores the header from a sender that is not a trusted proxy', async () => {
+        await setSale();
+        // A public address sending a different X-Forwarded-For each time cannot dodge the limit.
+        const codes = [];
+        for (const n of [1, 2, 3, 4]) {
+          codes.push(
+            (await loginVia(proxied, '198.51.100.7', `203.0.113.${n}`, `z${n}`)).statusCode,
+          );
+        }
+        expect(codes).toEqual([200, 200, 200, 429]);
+      });
+
+      it('is off by default: without TRUST_PROXY the header is ignored', async () => {
+        await setSale();
+        const codes = [];
+        for (const n of [1, 2, 3, 4]) {
+          codes.push((await loginVia(app, NGINX, `203.0.113.${n}`, `q${n}`)).statusCode);
+        }
+        expect(codes).toEqual([200, 200, 200, 429]);
+      });
     });
   });
 

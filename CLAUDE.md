@@ -51,6 +51,8 @@ with a real `JWT_SECRET` (32+ characters; the API refuses to start without it).
 - `npm run dev`: API in watch mode on port 3000 (`GET /health`)
 - `npm run dev:worker`: build and run the order worker (consumes the `orders` queue, writes to Postgres)
 - `npm run dev:web`: the web app on http://localhost:5173 (Vite; forwards `/api` to the API on 3000)
+- `docker compose up --build`: the whole system on http://localhost:8080 (nginx, api1 + api2, worker, migrate)
+- `npm run stress:up`, then `npm run stress:stampede|greedy|window|failover` and `npm run verify`: k6 runs (see README)
 - `npm test`: all workspace tests
 - `npm run lint`: ESLint for the whole repo; `npm run format`: Prettier (code only)
 - `npm run prisma:migrate -w apps/api -- --name <change>`: create and apply a migration
