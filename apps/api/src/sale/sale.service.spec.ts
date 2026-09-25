@@ -53,6 +53,7 @@ describe('SaleService', () => {
       status: 'active',
       startsAt: '2026-10-01T10:00:00.000Z',
       endsAt: '2026-10-01T11:00:00.000Z',
+      initialStock: 10,
       stockRemaining: 5,
       serverTime: new Date(START + 60_000).toISOString(),
     });

@@ -8,7 +8,7 @@ A high-throughput flash sale for a single product with limited stock. Each user 
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| POST | `/auth/demo-login` | Demo sign-in. Body: `{ "userId": "username or email" }`. Returns a signed JWT (no password; see Authentication) |
+| POST | `/api/auth/demo-login` | Demo sign-in. Body: `{ "userId": "username or email" }`. Returns a signed JWT (no password; see Authentication) |
 | GET | `/api/sale` | Product (name, price, image) and sale status: `upcoming`, `active`, `ended` or `sold_out`, plus times, stock left and server time. Public |
 | POST | `/api/purchases` | Attempt a purchase. Header `Authorization: Bearer <token>`, no body; the userId comes from the token |
 | GET | `/api/purchases/me` | Check if the signed-in user secured an item: `reserved` (in Redis, queued) or `confirmed` (saved in Postgres) |
@@ -73,7 +73,7 @@ The brief describes one product with a predefined stock, so the product is **con
 ```env
 PRODUCT_NAME="[Product name]"
 PRODUCT_PRICE="[Price]"
-PRODUCT_IMAGE_URL="/product.jpg"
+PRODUCT_IMAGE_URL="/images/product.svg"
 SALE_STARTS_AT=2026-09-30T10:00:00Z
 SALE_ENDS_AT=2026-09-30T10:30:00Z
 SALE_STOCK=100
@@ -103,7 +103,7 @@ At startup the API validates these and seeds them into Redis (`sale:config`, `sa
 
 The brief only asks users to "enter a user identifier (e.g., a username or email)", so full accounts are out of scope. Instead there is a lightweight demo login that uses the production pattern without passwords:
 
-1. The user enters a username or email once. `POST /auth/demo-login` validates it and returns a JWT signed with a server secret (short expiry, e.g. 30 minutes).
+1. The user enters a username or email once. `POST /api/auth/demo-login` validates it and returns a JWT signed with a server secret (short expiry, e.g. 30 minutes).
 2. The frontend keeps the token in memory and sends it as `Authorization: Bearer <token>`.
 3. A NestJS `AuthGuard` verifies the token and sets `req.user.id`. The purchase logic only ever reads that value, never the request body.
 
@@ -111,7 +111,7 @@ The brief only asks users to "enter a user identifier (e.g., a username or email
 
 **Known limitation:** there is no password or identity check, so one person can still sign in under several names and claim several units. Per-IP rate limiting slows this down but does not stop it.
 
-**Production approach:** replace `/auth/demo-login` with real sign-in (OAuth, Amazon Cognito, or an emailed one-time code). Because identity is resolved only in the `AuthGuard`, nothing else changes. Bot protection (CAPTCHA or a virtual waiting room) would be added for real sales.
+**Production approach:** replace `/api/auth/demo-login` with real sign-in (OAuth, Amazon Cognito, or an emailed one-time code). Because identity is resolved only in the `AuthGuard`, nothing else changes. Bot protection (CAPTCHA or a virtual waiting room) would be added for real sales.
 
 ### Local infrastructure (Docker)
 

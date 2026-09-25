@@ -12,6 +12,7 @@ export const CACHE_TTL_MS = 1_000;
 interface Snapshot {
   startsAt: number;
   endsAt: number;
+  initialStock: number;
   stock: number;
   productName: string;
   productPrice: string;
@@ -23,6 +24,8 @@ export interface SaleView {
   status: SaleStatus;
   startsAt: string;
   endsAt: string;
+  // The seeded total, so the page can show "42 of 100 left". Read from sale:config, never changed.
+  initialStock: number;
   stockRemaining: number;
   serverTime: string;
 }
@@ -44,6 +47,7 @@ export class SaleService {
       status: computeStatus(s, s.stock, now),
       startsAt: new Date(s.startsAt).toISOString(),
       endsAt: new Date(s.endsAt).toISOString(),
+      initialStock: s.initialStock,
       stockRemaining: Math.max(0, s.stock),
       serverTime: new Date(now).toISOString(),
     };
@@ -94,6 +98,7 @@ export class SaleService {
     return {
       startsAt: Number(config.startsAt),
       endsAt: Number(config.endsAt),
+      initialStock: Number(config.initialStock),
       stock: Number(stock),
       productName: config.productName,
       productPrice: config.productPrice,

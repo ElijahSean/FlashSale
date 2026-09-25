@@ -99,6 +99,7 @@ describe('SaleModule with real Redis', () => {
       status: 'active',
       startsAt: '2020-01-01T00:00:00.000Z',
       endsAt: '2099-01-01T00:00:00.000Z',
+      initialStock: 100,
       stockRemaining: 100,
     });
     expect(Number.isNaN(Date.parse(body.serverTime))).toBe(false);

@@ -1,0 +1,21 @@
+@import 'tailwindcss';
+
+/* Theme from docs/design/README.md (bookipi.com colors). Each token becomes a Tailwind class:
+   --color-primary gives bg-primary, text-primary, border-primary, and so on. */
+@theme {
+  --color-primary: #095ae9;
+  --color-primary-dark: #0848c0;
+  --color-ink: #0b192d;
+  --color-navy: #07112a;
+  --color-line: #d1dae5;
+  --color-muted: #5b6573;
+  --color-bg: #f6f8fc;
+  --color-amber: #ffae10;
+
+  --font-sans: 'Hanken Grotesk', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+body {
+  @apply bg-bg font-sans text-ink;
+}
