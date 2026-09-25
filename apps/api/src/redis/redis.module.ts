@@ -30,6 +30,9 @@ export class RedisModule implements OnApplicationShutdown {
   constructor(@Inject(REDIS) private readonly redis: Redis) {}
 
   async onApplicationShutdown() {
+    // Already closed: nothing to do. A second disconnect() would start ioredis's 2 s force-close
+    // timer on a socket that is already gone, and that timer holds the process open.
+    if (this.redis.status === 'end') return;
     await this.redis.quit().catch(() => this.redis.disconnect());
   }
 }

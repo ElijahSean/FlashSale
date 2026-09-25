@@ -1,14 +1,14 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
-import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
+import { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module';
-import { configureApp } from './app.setup';
+import { configureApp, createAdapter } from './app.setup';
 
 async function bootstrap() {
   // Fastify instead of the default Express adapter: lower per-request overhead,
   // which is where a flash sale spends its time.
-  const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter());
-  configureApp(app);
+  const app = await NestFactory.create<NestFastifyApplication>(AppModule, createAdapter());
+  await configureApp(app);
   app.enableShutdownHooks();
 
   const port = Number(process.env.PORT ?? 3000);

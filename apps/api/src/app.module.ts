@@ -5,6 +5,7 @@ import { RedisModule } from './redis/redis.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './health/health.module';
 import { SaleModule } from './sale/sale.module';
+import { AuthModule } from './auth/auth.module';
 import { PurchaseModule } from './purchase/purchase.module';
 
 @Module({
@@ -16,6 +17,7 @@ import { PurchaseModule } from './purchase/purchase.module';
     PrismaModule,
     HealthModule,
     SaleModule,
+    AuthModule,
     PurchaseModule,
   ],
 })

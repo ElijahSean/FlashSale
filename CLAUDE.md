@@ -26,7 +26,7 @@ Git: local commits only. Never push, add a remote or make the repo public; those
 - DB: PostgreSQL via Prisma
 - Frontend: React + Vite + TypeScript + Tailwind
 - Auth: demo login, JWT, NestJS `AuthGuard`
-- Tests: Jest, Supertest, Testcontainers (API/worker); Vitest + React Testing Library (web); k6 (stress)
+- Tests: Jest, Fastify `app.inject()` for HTTP (no open port), Testcontainers (API/worker); Vitest + React Testing Library (web); k6 (stress)
 - Infra: Docker Compose (redis, postgres, api x2, worker, nginx, k6 on demand)
 
 ## Repo layout
@@ -44,7 +44,8 @@ requirements/   one file per feature (+ _template.md)
 
 ## Commands
 
-Run from the repo root. Prerequisite: Docker Desktop running, `.env` copied from `.env.example`.
+Run from the repo root. Prerequisite: Docker Desktop running, `.env` copied from `.env.example`
+with a real `JWT_SECRET` (32+ characters; the API refuses to start without it).
 
 - `docker compose up -d redis postgres`: start the data stores (dev override publishes them on 127.0.0.1)
 - `npm run dev`: API in watch mode on port 3000 (`GET /health`)
@@ -55,9 +56,9 @@ Run from the repo root. Prerequisite: Docker Desktop running, `.env` copied from
 - `npm run prisma:generate -w apps/api`: regenerate the Prisma clients for the API and the worker (gitignored, under `src/generated`)
 - `docker compose exec redis redis-cli DEL sale:config sale:stock sale:buyers`: reset the sale; the next API start reseeds it from `.env`
 - Integration tests (`*.int.spec.ts`) start their own Redis and Postgres with Testcontainers, so Docker must be running for `npm test`
-- Worker tests run Jest with `--experimental-vm-modules`: Prisma 7 loads its query engine with a dynamic `import()`
+- API and worker tests run Jest with `--experimental-vm-modules`: Prisma 7 loads its query engine with a dynamic `import()`
 
-Pinned on purpose: NestJS 11 (12 is ESM-only), Prisma 7.10 (npm `latest` is an 8.x RC).
+Pinned on purpose: NestJS 11 and `@nestjs/jwt` 11 (12 is ESM-only), Prisma 7.10 (npm `latest` is an 8.x RC).
 Git Bash note: `cd` into a subfolder can trip fnm's shell hook; use `-w <workspace>` from the root.
 
 ## Writing style for docs and comments

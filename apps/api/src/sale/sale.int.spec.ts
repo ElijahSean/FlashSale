@@ -1,9 +1,9 @@
 import { Test } from '@nestjs/testing';
 import { ConfigModule } from '@nestjs/config';
-import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
+import { NestFastifyApplication } from '@nestjs/platform-fastify';
 import Redis from 'ioredis';
 import { GenericContainer, StartedTestContainer } from 'testcontainers';
-import { configureApp } from '../app.setup';
+import { configureApp, createAdapter } from '../app.setup';
 import { REDIS, RedisModule } from '../redis/redis.module';
 import { SaleModule } from './sale.module';
 import { SALE_KEYS } from './sale.keys';
@@ -19,6 +19,7 @@ const baseEnv = {
   PRODUCT_NAME: 'Sneaker',
   PRODUCT_PRICE: '$99.00',
   PRODUCT_IMAGE_URL: '/images/product.jpg',
+  WEB_ORIGIN: 'http://localhost:5173',
 };
 
 describe('SaleModule with real Redis', () => {
@@ -54,8 +55,8 @@ describe('SaleModule with real Redis', () => {
     });
     if (stubRedis) builder.overrideProvider(REDIS).useValue({ quit: async () => {} });
     const moduleRef = await builder.compile();
-    const app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
-    configureApp(app);
+    const app = moduleRef.createNestApplication<NestFastifyApplication>(createAdapter());
+    await configureApp(app);
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
     return app;

@@ -1,11 +1,14 @@
 import { Module } from '@nestjs/common';
+import { AuthModule } from '../auth/auth.module';
 import { OrderQueue } from './order-queue';
+import { PurchaseStatusService } from './purchase-status.service';
+import { PurchaseController } from './purchase.controller';
 import { PurchaseService } from './purchase.service';
 
-// No controller yet: the purchase endpoint and AuthGuard arrive in 05. The module is registered
-// now so the scripts are loaded into Redis at startup.
 @Module({
-  providers: [OrderQueue, PurchaseService],
+  imports: [AuthModule], // AuthGuard and the JwtService it verifies with
+  controllers: [PurchaseController],
+  providers: [OrderQueue, PurchaseService, PurchaseStatusService],
   exports: [PurchaseService],
 })
 export class PurchaseModule {}
