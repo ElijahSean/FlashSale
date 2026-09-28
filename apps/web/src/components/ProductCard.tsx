@@ -28,8 +28,9 @@ export function ProductCard({ product }: { product: Sale['product'] }) {
 /** The image is optional. If missing or broken, show a plain placeholder. */
 function ProductImage({ url, name }: { url: string; name: string }) {
   const [broken, setBroken] = useState(false);
-  const box =
-    'size-21 shrink-0 rounded-[10px] md:h-auto md:min-h-90 md:w-full md:grow md:rounded-xl';
+  // Desktop: h-0 + grow fills only the card's spare height, so a tall photo can't stretch the
+  // page. object-contain then fits the photo inside, whatever its shape.
+  const box = 'size-21 shrink-0 rounded-[10px] md:h-0 md:min-h-110 md:w-full md:grow md:rounded-xl';
   if (!url || broken) {
     return <div role="img" aria-label={name} className={`${box} bg-[#EEF3FD]`} />;
   }
