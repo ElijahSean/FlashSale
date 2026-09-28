@@ -1,26 +1,24 @@
-/** The one sale and its one product (design rule 12: product is configuration, not data). */
+/** The one sale and its one product (rule 12: the product comes from config). */
 export interface SaleConfig {
-  /** Epoch ms. Stored as numbers in Redis so the Lua script (03) can compare them to TIME. */
+  /** Milliseconds. Stored as numbers so the Lua script can compare them with Redis TIME. */
   startsAt: number;
   endsAt: number;
   initialStock: number;
   productName: string;
-  /** Display string only, for example "$99.00". There are no payments. */
+  /** Just text to show, like "$99.00". There are no payments. */
   productPrice: string;
   /** Optional. Empty string when not set. */
   productImageUrl: string;
 }
 
-// ISO 8601 with a date, a time and an explicit timezone. Without the zone, "2026-10-01T10:00"
-// would mean a different instant on each machine that parses it.
+// A date and time with a timezone. Without the zone, each machine would read a different time.
 const ISO_WITH_ZONE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})$/;
 
 /**
- * Turns raw env values into a checked SaleConfig, or throws one error listing every problem.
+ * Checks the sale settings from .env. Throws one error listing every problem.
  *
- * Pure on purpose: it takes a lookup function instead of reading process.env or Redis, so the
- * unit tests can feed it any values. The API calls it at startup, so a bad .env stops the
- * process with a clear message instead of running a broken sale.
+ * It takes a lookup function instead of reading process.env, so tests can pass any values.
+ * Runs at startup, so a bad .env stops the API with a clear message.
  */
 export function parseSaleConfig(get: (key: string) => string | undefined): SaleConfig {
   const errors: string[] = [];
@@ -31,7 +29,7 @@ export function parseSaleConfig(get: (key: string) => string | undefined): SaleC
     errors.push('SALE_ENDS_AT must be after SALE_STARTS_AT');
   }
 
-  // Digits only, so "10.5", "1e3", "-5" and "abc" are all rejected before the number check.
+  // Digits only: rejects "10.5", "1e3", "-5" and "abc".
   const rawStock = get('SALE_STOCK')?.trim() ?? '';
   const initialStock = Number(rawStock);
   if (!/^\d+$/.test(rawStock) || initialStock <= 0 || !Number.isSafeInteger(initialStock)) {

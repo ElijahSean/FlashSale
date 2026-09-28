@@ -6,8 +6,8 @@ import { SALE_KEYS } from '../sale/sale.keys';
 
 export type MyPurchase =
   | { purchased: false }
-  // reserved: the gate gave this user a unit and the order is queued, not saved yet.
-  // confirmed: the worker (04) saved the order in Postgres.
+  // reserved: the user got a unit; the order is queued but not saved yet.
+  // confirmed: the worker saved the order in Postgres.
   | { purchased: true; status: 'reserved' | 'confirmed' };
 
 /** Answers GET /api/purchases/me: where is this user's purchase? */
@@ -27,7 +27,7 @@ export class PurchaseStatusService {
     try {
       reserved = await this.redis.sismember(SALE_KEYS.buyers, userId);
     } catch (err) {
-      // Rule 4: without Redis we cannot say, so we do not guess.
+      // Rule 4: without Redis we can't know, so we don't guess.
       this.logger.error(`Buyer lookup failed: ${err instanceof Error ? err.message : err}`);
       throw new ServiceUnavailableException('Service is temporarily unavailable');
     }
@@ -35,9 +35,8 @@ export class PurchaseStatusService {
   }
 
   /**
-   * A Postgres failure counts as "not saved yet" and the answer falls back to Redis. A buyer whose
-   * purchase worked then sees "reserved", which is true, instead of an error that suggests trying
-   * again. Postgres never decides who won (rule 3); it only says the order is written down.
+   * If Postgres is down, we answer from Redis instead. The buyer sees "reserved", which is true,
+   * instead of an error. Postgres never decides who won (rule 3); it only records orders.
    */
   private async hasSavedOrder(userId: string): Promise<boolean> {
     try {

@@ -1,17 +1,14 @@
 import Redis from 'ioredis';
 
 /**
- * Builds the ioredis client the API uses. Tests call this too, so they run with exactly the
- * production options instead of a friendlier copy.
+ * Builds the API's Redis client. Tests use it too, so they get the real settings.
  *
- * Why these options (design rule 4, fail closed):
- * - enableOfflineQueue: false. By default ioredis buffers commands while disconnected and
- *   sends them when Redis comes back. For a purchase that would mean a request hangs, then
- *   maybe succeeds minutes later. We want an immediate error so the API can answer 503.
- * - commandTimeout: a connected but stuck Redis also fails fast instead of holding the request.
- * - maxRetriesPerRequest: 1. A command is not silently retried many times.
- * Reconnection itself stays on (default retryStrategy), so the API recovers on its own
- * once Redis is back.
+ * Why these settings (rule 4, fail closed):
+ * - enableOfflineQueue: false. Normally ioredis saves commands while disconnected and sends
+ *   them later. A purchase could then hang and succeed minutes later. We want an error now (503).
+ * - commandTimeout: a stuck Redis fails fast too.
+ * - maxRetriesPerRequest: 1. No silent retries.
+ * Reconnecting stays on, so the API recovers by itself when Redis is back.
  */
 export function createRedisClient(url: string): Redis {
   return new Redis(url, {
@@ -22,14 +19,12 @@ export function createRedisClient(url: string): Redis {
   });
 }
 
-// How long startup waits for Redis before giving up. In the full stack (07) Compose starts the
-// API only after Redis is healthy and restarts it on exit, so failing here is safe.
+// How long startup waits for Redis. In Docker the API restarts if this fails, so failing is safe.
 const READY_TIMEOUT_MS = 10_000;
 
 /**
- * Resolves once the client is connected. With no offline queue, a command sent before that
- * fails at once, so startup work (seeding in 02, script loading in 03) waits here first and
- * gives up with a clear error if Redis never comes up.
+ * Waits until the client is connected. Without the offline queue, an early command would fail,
+ * so startup work (seeding, loading scripts) waits here. Gives a clear error if Redis never comes.
  */
 export async function waitForRedisReady(redis: Redis, timeoutMs = READY_TIMEOUT_MS) {
   if (redis.status === 'ready') return;

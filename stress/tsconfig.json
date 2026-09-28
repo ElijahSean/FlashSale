@@ -1,6 +1,5 @@
 {
-  // Type checking only for verify.ts. Node runs it directly by stripping the types, so only
-  // syntax that can simply be erased is allowed (no enums, no namespaces).
+  // Type checks verify.ts. Node runs it by removing the types, so no enums or namespaces.
   "compilerOptions": {
     "target": "ES2023",
     "module": "nodenext",

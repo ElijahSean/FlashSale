@@ -1,18 +1,17 @@
-// Shared by the k6 scenarios. k6 runs JavaScript in its own runtime (not Node): `k6/*` imports and
-// __ENV come from k6 itself.
+// Helpers for the k6 scripts. k6 runs JavaScript itself (not Node); `k6/*` and __ENV come from k6.
 import http from 'k6/http';
 import { Counter, Trend } from 'k6/metrics';
 
 export const BASE_URL = __ENV.BASE_URL || 'http://nginx:8080';
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
-// In a sale, "sold out", "already bought" and "not open" are correct answers, not errors. Without
-// this, k6's http_req_failed would count every 410 as a failure. 429 and 5xx still count.
+// In a sale, "sold out", "already bought" and "not open" are normal answers, not errors.
+// Without this, k6 would count every 410 as a failure. 429 and 5xx still count.
 http.setResponseCallback(http.expectedStatuses(200, 201, 403, 409, 410));
 
 /**
- * One counter per answer the purchase endpoint can give. The thresholds in each scenario are the
- * tests: "exactly 100 x 201, zero 5xx". k6 fails the run (exit code 99) when one does not hold.
+ * One counter per possible answer. Each script's thresholds are its tests, like
+ * "exactly 100 x 201, zero 5xx". If one fails, k6 exits with code 99.
  */
 const buyCounters = {
   201: new Counter('buy_201'),
@@ -24,10 +23,10 @@ const buyCounters = {
   other: new Counter('buy_other'), // anything else, including a network error (status 0)
 };
 export const loginFailed = new Counter('login_failed');
-// Time of the buy request alone, login excluded. Its p95 goes into docs/stress-results.md.
+// Time of the buy request only (not login). Its p95 goes into docs/stress-results.md.
 export const buyDuration = new Trend('buy_duration', true);
 
-/** Adds 1 to the counter for this answer and 0 to the rest, so every counter exists in the summary. */
+/** Adds 1 to this answer's counter and 0 to the rest, so all counters show in the summary. */
 export function countBuy(res) {
   const key = res.status >= 500 ? '5xx' : buyCounters[res.status] ? res.status : 'other';
   for (const [name, counter] of Object.entries(buyCounters)) {
@@ -37,8 +36,8 @@ export function countBuy(res) {
 }
 
 /**
- * Puts the sale back to a clean start (POST /api/admin/reset, needs ENABLE_ADMIN and ADMIN_TOKEN).
- * Called once from setup(). A failed reset stops the run: numbers from a dirty sale mean nothing.
+ * Resets the sale (POST /api/admin/reset). Called once in setup().
+ * If the reset fails, the run stops: numbers from a dirty sale mean nothing.
  */
 export function resetSale(body) {
   const res = http.post(`${BASE_URL}/api/admin/reset`, JSON.stringify(body), {
@@ -50,7 +49,7 @@ export function resetSale(body) {
   return res.json();
 }
 
-/** Demo login. Returns the token, or null (counted in login_failed, which must stay 0). */
+/** Logs in. Returns the token, or null (counted in login_failed, which must stay 0). */
 export function login(userId) {
   const res = http.post(`${BASE_URL}/api/auth/demo-login`, JSON.stringify({ userId }), {
     headers: JSON_HEADERS,
@@ -64,7 +63,7 @@ export function login(userId) {
   return res.json('accessToken');
 }
 
-/** The purchase request as [method, url, body, params], ready for http.post or http.batch. */
+/** The buy request as [method, url, body, params], for http.post or http.batch. */
 export function buyRequest(token) {
   return [
     'POST',

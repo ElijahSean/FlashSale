@@ -6,13 +6,10 @@ import { createRedisClient } from './redis-client';
 export const REDIS = Symbol('REDIS');
 
 /**
- * One shared ioredis client for the whole API process. Its fail-closed options are explained in
- * redis-client.ts.
+ * One shared Redis client for the whole API. Its settings are explained in redis-client.ts.
  *
- * The client connects in the background. At startup the sale seeder (02) and the purchase script
- * loader (03) wait up to 10 s for it and stop the API if Redis never comes up. Once running, a
- * Redis outage does not crash the process: /health reports it and requests get 503 until Redis
- * is back.
+ * At startup the API waits up to 10 s for Redis, then stops if it isn't there.
+ * Once running, a Redis outage doesn't crash the API: /health reports it and requests get 503.
  */
 @Global()
 @Module({
@@ -30,8 +27,7 @@ export class RedisModule implements OnApplicationShutdown {
   constructor(@Inject(REDIS) private readonly redis: Redis) {}
 
   async onApplicationShutdown() {
-    // Already closed: nothing to do. A second disconnect() would start ioredis's 2 s force-close
-    // timer on a socket that is already gone, and that timer holds the process open.
+    // Already closed: skip. Closing twice starts a 2 s timer that keeps the process alive.
     if (this.redis.status === 'end') return;
     await this.redis.quit().catch(() => this.redis.disconnect());
   }

@@ -1,6 +1,6 @@
 // Greedy users: 500 users each fire 20 purchase requests in parallel.
-// Proves rule 2 (one unit per user) under a race: no user ever gets more than one 201. With 100
-// units, exactly 100 users win once; every other request is 409 (already bought) or 410 (sold out).
+// Proves rule 2 (one per user): nobody gets two 201s. With 100 units, 100 users win once;
+// every other request is 409 (already bought) or 410 (sold out).
 //
 //   npm run stress:greedy      then      npm run verify
 import http from 'k6/http';
@@ -12,15 +12,14 @@ const USERS = 500;
 const PARALLEL = 20;
 const STOCK = 100;
 
-// Users who got more than one 201. Any value above 0 is a broken rule 2.
+// Users who got more than one 201. Anything above 0 breaks rule 2.
 const usersWithTwoWins = new Counter('users_with_two_wins');
 
 export const options = {
   scenarios: {
     greedy: { executor: 'per-vu-iterations', vus: USERS, iterations: 1, maxDuration: '5m' },
   },
-  // k6 sends at most 6 requests of a batch at a time to one host by default. 20 lets every request
-  // of a user's batch be in flight together.
+  // By default k6 sends 6 at a time. 20 lets all of a user's requests go at once.
   batchPerHost: PARALLEL,
   thresholds: {
     buy_201: [`count==${STOCK}`],

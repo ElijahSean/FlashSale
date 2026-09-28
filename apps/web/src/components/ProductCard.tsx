@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { Sale } from '../api';
 
-/** Name, price and image all come from GET /api/sale (design rule 12: one product, from config). */
+/** Name, price and image come from GET /api/sale (rule 12: one product, from config). */
 export function ProductCard({ product }: { product: Sale['product'] }) {
   return (
     <section
@@ -25,7 +25,7 @@ export function ProductCard({ product }: { product: Sale['product'] }) {
   );
 }
 
-/** The image is optional config. Missing or broken, the card shows a plain placeholder instead. */
+/** The image is optional. If missing or broken, show a plain placeholder. */
 function ProductImage({ url, name }: { url: string; name: string }) {
   const [broken, setBroken] = useState(false);
   const box =

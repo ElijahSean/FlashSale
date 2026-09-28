@@ -2,8 +2,7 @@ import type { BuyOutcome } from './api';
 
 export type Tone = 'success' | 'warn' | 'neutral' | 'error';
 
-// Tone colors from docs/design/README.md. Full class strings, because Tailwind only generates
-// classes it can find written out in the source.
+// Colors from the design. Full class names, because Tailwind only includes classes it finds written out.
 export const TONE_CLASSES: Record<Tone, { box: string; title: string; dot: string }> = {
   success: { box: 'bg-[#EAF1FE] border-primary', title: 'text-primary-dark', dot: 'bg-primary' },
   warn: { box: 'bg-[#FFF6E0] border-amber', title: 'text-[#6B4200]', dot: 'bg-amber' },
@@ -12,8 +11,8 @@ export const TONE_CLASSES: Record<Tone, { box: string; title: string; dot: strin
 };
 
 /**
- * One message per outcome, from the design's table. A Record over every outcome, like the API's
- * purchase-result.ts: a new outcome does not compile until it has a message here.
+ * One message per outcome. It must list every outcome, so a new one won't compile
+ * until it has a message here.
  */
 export const MESSAGES: Record<BuyOutcome, { tone: Tone; title: string; body: string }> = {
   SUCCESS: {
@@ -42,8 +41,8 @@ export const MESSAGES: Record<BuyOutcome, { tone: Tone; title: string; body: str
     title: 'Slow down',
     body: 'Too many attempts. Wait a moment and try again.',
   },
-  // Not "Nothing was reserved": a Redis call that timed out can still have run (LEARNINGS 03).
-  // The page asks /me afterwards, so a unit that was reserved still shows up below.
+  // We don't say "nothing was reserved": a timed-out call may still have worked.
+  // The page asks /me after, so a reserved unit still shows up.
   UNAVAILABLE: {
     tone: 'error',
     title: 'Please try again',

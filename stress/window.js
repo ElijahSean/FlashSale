@@ -1,7 +1,7 @@
 // Window edges: buying before the sale opens and after it closes.
-// Proves the sale window holds under load (rule 9: the gate uses Redis TIME): every attempt
-// before the start gets 403 NOT_STARTED, every attempt after the end gets 403 ENDED, and not one
-// unit moves. The exact millisecond edges are covered by the Lua tests in 03.
+// Proves the sale window holds under load (rule 9): before the start every buy gets
+// 403 NOT_STARTED, after the end 403 ENDED, and no unit moves.
+// The exact millisecond edges are tested in the Lua tests.
 //
 //   npm run stress:window      then      npm run verify   (expects 0 buyers, 0 orders)
 //
@@ -15,7 +15,7 @@ import { buy, login, resetSale } from './lib.js';
 
 const USERS_PER_PHASE = 1000;
 
-// Answers that were not the expected 403 with the expected result. Must stay 0.
+// Any answer that isn't the expected 403. Must stay 0.
 const wrongAnswers = new Counter('window_wrong_answers');
 const beforeChecked = new Counter('window_before_checked');
 const afterChecked = new Counter('window_after_checked');
@@ -36,7 +36,7 @@ export const options = {
   },
   thresholds: {
     window_wrong_answers: ['count==0'],
-    // Every planned attempt ran; fewer would mean a phase ran out of time.
+    // Every planned try ran. Fewer means a phase ran out of time.
     window_before_checked: [`count==${USERS_PER_PHASE}`],
     window_after_checked: [`count==${USERS_PER_PHASE}`],
     buy_201: ['count==0'],
@@ -45,7 +45,7 @@ export const options = {
   },
 };
 
-// The window starts 20 s after the reset, by the Redis clock, and lasts 10 s.
+// The sale opens 20 s after the reset (Redis clock) and lasts 10 s.
 export function setup() {
   return resetSale({ stock: 100, startsInSeconds: 20, durationSeconds: 10 });
 }

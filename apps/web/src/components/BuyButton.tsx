@@ -9,9 +9,8 @@ interface BuyState {
 }
 
 /**
- * Enabled only when the sale is live, stock is left, nothing is pending and this user has not
- * bought. The Lua gate still decides every purchase (design rule 3); this only spares the user a
- * click that can only fail. Order matters: "Buying…" and "Purchased" win over the sale status.
+ * Enabled only when the sale is live, stock is left, nothing is pending and the user hasn't bought.
+ * The Lua gate still decides (rule 3); this just avoids clicks that can only fail. Order matters: "Buying…" and "Purchased" win over the sale status.
  */
 export function buyButtonState({ status, stockRemaining, pending, purchased }: BuyState) {
   if (pending) return { enabled: false, label: 'Buying…' };

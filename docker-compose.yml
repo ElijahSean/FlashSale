@@ -1,14 +1,13 @@
-# The whole system (requirement 07): `docker compose up --build`, then http://localhost:8080.
-# Local stand-ins for managed cloud services (Redis = ElastiCache, Postgres = RDS, nginx = a load
-# balancer). Only nginx publishes a port. The data stores are reachable only on the internal
-# network; docker-compose.override.yml opens them to localhost for development only.
-# docker-compose.stress.yml adds the stress-test settings and k6 (see README).
+# The whole system: `docker compose up --build`, then http://localhost:8080.
+# Stands in for cloud services (Redis = ElastiCache, Postgres = RDS, nginx = load balancer).
+# Only nginx is reachable from outside. docker-compose.override.yml opens Redis and Postgres
+# for development. docker-compose.stress.yml adds stress test settings.
 
 services:
   redis:
     image: redis:7.4-alpine
-    # AOF logs every write, so stock and buyers survive a Redis restart.
-    # everysec trades at most one second of writes for much higher throughput than fsync always.
+    # AOF saves every write to disk, so stock and buyers survive a Redis restart.
+    # everysec: saves once a second. We could lose 1 s of writes, but it's much faster.
     command: ['redis-server', '--appendonly', 'yes', '--appendfsync', 'everysec']
     volumes:
       - redis-data:/data
@@ -34,30 +33,27 @@ services:
       timeout: 3s
       retries: 5
 
-  # One-shot: applies the committed Prisma migrations, then exits. The API and the worker start
-  # only after it finished successfully, so neither ever sees a missing orders table.
+  # Runs once: creates the database tables, then exits. The API and worker wait for it.
   migrate:
     build: { context: ., target: migrate }
     environment:
-      # A POSTGRES_PASSWORD with URL characters (@ : / #) would need encoding here.
+      # A password with @ : / or # would break this URL.
       DATABASE_URL: &database-url postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     depends_on:
       postgres: { condition: service_healthy }
     networks: [internal]
     restart: 'no'
 
-  # Two API replicas behind nginx (07), written as two services from one definition (&api below).
-  # They share nothing but Redis and Postgres (rule 7), which is what lets the stress tests prove
-  # the rules hold across instances.
+  # Two API copies behind nginx: api1 and api2, from one definition (&api).
+  # They only share Redis and Postgres (rule 7), so the stress tests prove the rules
+  # hold across copies.
   #
-  # Why not one service with `deploy.replicas: 2`: nginx would then know both replicas by one name,
-  # and nginx retries a failed request only on a different server line. When one replica was
-  # stopped, requests sent to it failed with 504 instead of moving to the other one. Two names give
-  # nginx two server lines, and the failover test passes.
+  # Why two services instead of `replicas: 2`: nginx only retries on a different server name.
+  # With one name, stopping a copy gave 504s. With two names, nginx retries on the other.
   api1: &api
     build: { context: ., target: api }
-    # Settings are listed one by one instead of passing the whole .env: each container gets only
-    # what it uses. Service names (redis, postgres) replace the localhost addresses in .env.
+    # Each setting listed, so the container gets only what it needs.
+    # Inside Docker, Redis and Postgres are reached by service name, not localhost.
     environment:
       REDIS_URL: &redis-url redis://redis:6379
       DATABASE_URL: *database-url
@@ -69,21 +65,20 @@ services:
       PRODUCT_PRICE: ${PRODUCT_PRICE:?set in .env}
       PRODUCT_IMAGE_URL: ${PRODUCT_IMAGE_URL:-}
       JWT_SECRET: ${JWT_SECRET:?set in .env}
-      # The page and the API share nginx's origin. Only this origin may call the API from a browser.
+      # The page and API are both on nginx's address. Only it may call the API from a browser.
       WEB_ORIGIN: http://localhost:8080
       RATE_LIMIT_USER_PER_SEC: ${RATE_LIMIT_USER_PER_SEC:-5}
       RATE_LIMIT_IP_PER_SEC: ${RATE_LIMIT_IP_PER_SEC:-50}
-      # Trust X-Forwarded-For only from private addresses: nginx on this Docker network.
+      # Trust the client IP header only from Docker's private addresses (nginx).
       TRUST_PROXY: uniquelocal
-      # One log line per request, so `docker compose logs api1 api2` shows both serving.
+      # One log line per request, so `docker compose logs api1 api2` shows both working.
       LOG_REQUESTS: 'true'
     depends_on:
       redis: { condition: service_healthy }
       postgres: { condition: service_healthy }
       migrate: { condition: service_completed_successfully }
     networks: [internal]
-    # /health answers 503 when Redis or Postgres is down, so Docker marks the replica unhealthy.
-    # wget comes with the Alpine base image; no curl needed.
+    # /health gives 503 if Redis or Postgres is down, so Docker marks this copy unhealthy.
     healthcheck:
       test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:3000/health']
       interval: 5s
@@ -105,7 +100,7 @@ services:
     networks: [internal]
     restart: unless-stopped
 
-  # The only published port: the web page and the API, reachable from this machine only.
+  # The only open port: page and API, on this machine only.
   nginx:
     build: { context: ., target: web }
     ports:

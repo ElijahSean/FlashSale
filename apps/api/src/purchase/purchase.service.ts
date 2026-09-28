@@ -22,27 +22,26 @@ export const PURCHASE_RESULTS = [
 ] as const;
 export type PurchaseResult = (typeof PURCHASE_RESULTS)[number];
 
-/** A Lua script plus the SHA Redis gave it on SCRIPT LOAD. */
+/** A Lua script and its SHA (the id Redis gives it). */
 interface Script {
   name: string;
   source: string;
   sha?: string;
 }
 
-// Read once at startup. nest-cli.json copies the .lua files next to the compiled code.
+// Read once at startup. The build copies the .lua files next to the code.
 const readScript = (file: string) => readFileSync(join(__dirname, 'lua', file), 'utf8');
 
 /**
- * Calls the purchase gate and the compensating script in Redis.
+ * Runs the purchase gate and the undo script in Redis.
  *
- * How the scripts are called: SCRIPT LOAD sends the script text once and Redis answers with its
- * SHA (a fingerprint). After that, EVALSHA runs it by SHA, so each purchase sends a few bytes
- * instead of the whole script. Redis keeps loaded scripts in a cache that can be emptied (a
- * restart, a failover, SCRIPT FLUSH). Then EVALSHA fails with NOSCRIPT, and we load it again
- * and retry once. That retry is safe: NOSCRIPT means the script did not run at all.
+ * SCRIPT LOAD sends a script once and gets back a SHA (a short id).
+ * EVALSHA then runs it by that id, so each purchase sends a few bytes, not the whole script.
+ * If Redis forgot the script (restart), EVALSHA says NOSCRIPT. We load it again and retry once.
+ * That retry is safe: NOSCRIPT means the script did not run.
  *
- * Every other failure (Redis down, timeout, missing config) becomes a 503 (rule 4). There is
- * no second path that could decide a purchase without the script (rule 3).
+ * Any other error becomes 503 (rule 4, fail closed).
+ * Nothing but the script ever decides a purchase (rule 3).
  */
 @Injectable()
 export class PurchaseService implements OnModuleInit {
@@ -58,22 +57,20 @@ export class PurchaseService implements OnModuleInit {
     private readonly orders: OrderQueue,
   ) {}
 
-  // Load both scripts at startup, so the first buyer does not pay for it.
+  // Load both scripts at startup, so the first buyer doesn't wait for it.
   async onModuleInit() {
     await waitForRedisReady(this.redis);
     await Promise.all([this.load(this.purchaseScript), this.load(this.releaseScript)]);
   }
 
   /**
-   * The full purchase: reserve in Redis, then queue the order for the worker to save.
+   * The full purchase: reserve in Redis, then queue the order for the worker.
    *
-   * Rule 6, no lost stock: if the reservation worked but the enqueue failed, the unit is given
-   * back (release.lua) before answering 503. Otherwise the user would hold a unit that never
-   * becomes an order, and nobody else could buy it.
+   * Rule 6, no lost stock: if queueing fails, give the unit back, then answer 503.
+   * Otherwise the unit would be stuck: reserved, but never an order.
    *
-   * ALREADY_PURCHASED enqueues again. Usually that does nothing (the job exists, rule 5). But a
-   * purchase whose answer timed out may have reserved a unit without queueing it (see 03), and this
-   * repairs that the next time the user tries.
+   * ALREADY_PURCHASED queues again. Usually that does nothing (the job exists, rule 5).
+   * But if an earlier try timed out after reserving, this creates the missing job.
    */
   async purchase(userId: string): Promise<PurchaseResult> {
     const result = await this.attempt(userId);
@@ -83,8 +80,8 @@ export class PurchaseService implements OnModuleInit {
         await this.orders.enqueue(userId);
       } catch (err) {
         this.logger.error(`Enqueue failed for a new reservation, releasing it: ${errMsg(err)}`);
-        // If Redis is down, this also fails and throws 503 itself. The unit then stays reserved
-        // with no job, and the ALREADY_PURCHASED path below repairs it on the user's retry.
+        // If Redis is down, this fails too (503). The user's next try goes down the
+        // ALREADY_PURCHASED path below, which queues the missing job.
         await this.release(userId);
         throw new ServiceUnavailableException('Purchase is temporarily unavailable');
       }
@@ -92,7 +89,7 @@ export class PurchaseService implements OnModuleInit {
       try {
         await this.orders.enqueue(userId);
       } catch (err) {
-        // Never release here: this user may already have an order queued or saved.
+        // Never give the unit back here: this user may already have an order.
         this.logger.error(`Re-enqueue failed for an existing buyer: ${errMsg(err)}`);
         throw new ServiceUnavailableException('Purchase is temporarily unavailable');
       }
@@ -100,7 +97,7 @@ export class PurchaseService implements OnModuleInit {
     return result;
   }
 
-  /** Tries to reserve one unit for this user. The result comes only from the Lua script (rule 3). */
+  /** Tries to reserve one unit. Only the Lua script decides (rule 3). */
   async attempt(userId: string): Promise<PurchaseResult> {
     const result = await this.run(
       this.purchaseScript,
@@ -114,8 +111,8 @@ export class PurchaseService implements OnModuleInit {
   }
 
   /**
-   * Undoes a reservation (rule 6). Returns true if a unit was given back. Safe to call more than
-   * once: the script only adds stock back if it actually removed the buyer.
+   * Undoes a reservation (rule 6). Returns true if a unit was given back.
+   * Safe to call twice: stock only goes up if the buyer was really removed.
    */
   async release(userId: string): Promise<boolean> {
     const result = await this.run(
@@ -142,7 +139,7 @@ export class PurchaseService implements OnModuleInit {
         return await this.redis.evalsha(script.sha!, keys.length, ...keys, ...args);
       }
     } catch (err) {
-      // Rule 4, fail closed: we cannot know the outcome, so we never guess one.
+      // Rule 4, fail closed: we don't know what happened, so we never guess.
       this.logger.error(`Script "${script.name}" failed: ${errMsg(err)}`);
       throw new ServiceUnavailableException('Purchase is temporarily unavailable');
     }

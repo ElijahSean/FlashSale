@@ -4,12 +4,11 @@
 //   about 10 s in, in a second terminal:   docker compose stop api1
 //   when it ends:                          npm run verify   then   docker compose start api1
 //
-// Why nothing fails (see apps/web/nginx.conf and OrderQueue.onApplicationShutdown):
-// - docker stop sends SIGTERM. The replica stops accepting, finishes the requests it already has,
-//   and only then closes its queue and database connections.
-// - nginx sees the refused (or, once the container is gone, timed-out) connection and sends the
-//   request to the other replica. It retries only requests that were never sent, so no purchase
-//   is sent twice. A request that meets the stopped replica is slower (up to 3 s), not failed.
+// Why nothing should fail (see apps/web/nginx.conf and OrderQueue):
+// - The stopping copy finishes its current requests before closing the queue and database.
+// - nginx can't connect to the stopped copy, so it sends the request to the other one.
+//   It only retries requests that were never sent, so no purchase is sent twice.
+//   Those requests are slower (up to 3 s), not failed.
 import exec from 'k6/execution';
 import { buy, login, resetSale } from './lib.js';
 
@@ -19,8 +18,8 @@ const STOCK = 100_000;
 export const options = {
   scenarios: {
     steady: {
-      // A steady 50 new buyers per second for 30 s, whatever the response times: a stopped
-      // replica cannot slow the load down and hide failures.
+      // A steady 50 new buyers per second for 30 s, even if answers get slow.
+      // So a stopped copy can't slow the load and hide failures.
       executor: 'constant-arrival-rate',
       rate: 50,
       timeUnit: '1s',

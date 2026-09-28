@@ -1,21 +1,19 @@
 --[[
-  Resets the sale for a test run (requirement 07, admin reset). Never used by buyers.
+  Resets the sale for a stress test run. Buyers never call this.
 
-  Why a Lua script: rule 1 says stock only changes inside Lua, never through a read-then-write in
-  the API. Here the window, the stock and the buyers set change together in one atomic step, so a
-  purchase can never see new stock with old buyers (or the other way round).
+  Why Lua: stock only changes inside Lua (rule 1). Window, stock and buyers
+  change together in one step, so a purchase never sees half a reset.
 
-  Rule 9, one clock: for a window "starting in N seconds" the start is computed from Redis TIME,
-  the same clock purchase.lua compares against. The API's clock is never used.
+  A window "starting in N seconds" uses Redis's clock (rule 9).
 
   KEYS[1] = sale:config
   KEYS[2] = sale:stock
   KEYS[3] = sale:buyers
   ARGV[1] = stock
-  ARGV[2] = 'absolute' (ARGV[3], ARGV[4] are startsAt, endsAt in epoch ms)
-            or 'relative' (ARGV[3], ARGV[4] are "starts in" and "lasts" in ms)
+  ARGV[2] = 'absolute': ARGV[3], ARGV[4] are startsAt, endsAt in ms
+            'relative': ARGV[3], ARGV[4] are "starts in" and "lasts" in ms
 
-  Returns { startsAt, endsAt } as strings (epoch ms).
+  Returns { startsAt, endsAt } in ms.
 ]]
 
 local startsAt, endsAt
@@ -29,7 +27,7 @@ else
   endsAt = tonumber(ARGV[4])
 end
 
--- Stored as plain whole-number strings, the same format the seeder (02) writes.
+-- Save as whole numbers, the same format the seeder writes.
 startsAt = string.format('%d', startsAt)
 endsAt = string.format('%d', endsAt)
 

@@ -5,24 +5,23 @@ import { OrderWriter } from './prisma';
 export type SaveResult = 'saved' | 'duplicate' | 'not_a_buyer';
 
 /**
- * The job handler: turns one reserved unit into one row in Postgres.
+ * Handles one job: turns one reserved unit into one row in Postgres.
  *
- * Rule 5, idempotent: a job can run more than once (a retry after a crash, a duplicate enqueue).
- * ON CONFLICT ("userId") DO NOTHING makes the second insert a no-op instead of an error, backed by
- * the UNIQUE constraint on userId (rule 2). So "run twice" has the same effect as "run once".
+ * Rule 5, safe to repeat: a job can run twice (retry after a crash).
+ * ON CONFLICT ("userId") DO NOTHING makes the second insert do nothing instead of failing.
+ * It relies on the UNIQUE userId column (rule 2). Running twice = running once.
  *
- * Rule 3, Redis decides: before writing, check the user still holds a unit in sale:buyers. If an
- * enqueue timed out but was in fact written, the API released the unit, and this job must not
- * create an order for it. Postgres only records what Redis already decided.
+ * Rule 3, Redis decides: first check the user still holds a unit in sale:buyers.
+ * If the API gave the unit back, don't create an order for it.
  *
- * Any thrown error (Postgres or Redis down) fails this attempt, and BullMQ retries it with backoff.
+ * Any error (Postgres or Redis down) fails this try, and BullMQ retries later.
  */
 export function createSaveOrder(deps: { db: OrderWriter; redis: Redis }) {
   return async ({ userId }: OrderJob): Promise<SaveResult> => {
     if ((await deps.redis.sismember(BUYERS_KEY, userId)) === 0) return 'not_a_buyer';
 
-    // Tagged template: Prisma sends userId as a query parameter, never pasted into the SQL.
-    // The id and createdAt come from column defaults in Postgres.
+    // Prisma sends userId as a parameter, never pasted into the SQL (no SQL injection).
+    // Postgres fills in id and createdAt.
     const inserted = await deps.db.$executeRaw`
       INSERT INTO orders ("userId") VALUES (${userId})
       ON CONFLICT ("userId") DO NOTHING`;

@@ -11,19 +11,19 @@ import { StatusCard } from './components/StatusCard';
 import { useOrderStatus } from './useOrderStatus';
 import { useSale } from './useSale';
 
-// Outcomes where the unit may be ours even though the answer was not 201, so /me is asked.
-// 409: show the existing order. 503 and NETWORK: the gate may have run anyway (LEARNINGS 03).
+// Answers where we might still have a unit, so we ask /me.
+// 409: show the existing order. 503 and NETWORK: the gate may have worked anyway.
 const CHECK_ORDER_AFTER: BuyOutcome[] = ['ALREADY_PURCHASED', 'UNAVAILABLE', 'NETWORK'];
 
 export default function App() {
   const { sale, offsetMs, now, failing } = useSale();
   const order = useOrderStatus();
-  // The token lives in memory only: a reload signs you out. Nothing sensitive in localStorage.
+  // The token is kept in memory only. A reload signs you out. Nothing saved in the browser.
   const [session, setSession] = useState<Session | null>(null);
   const [outcome, setOutcome] = useState<BuyOutcome | null>(null);
   const [buying, setBuying] = useState(false);
-  // State updates wait for the next render, so two clicks in the same instant would both see
-  // buying === false. A ref changes at once, so the second click is stopped right here.
+  // State only updates on the next render, so two fast clicks would both see buying === false.
+  // A ref changes at once, so the second click stops here.
   const buyInFlight = useRef(false);
 
   function expireSession() {
@@ -41,7 +41,7 @@ export default function App() {
   function signIn(next: Session) {
     setSession(next);
     setOutcome(null);
-    // A returning buyer sees their order and a "Purchased" button without clicking anything.
+    // A returning buyer sees their order right away.
     followOrder(next.accessToken);
   }
 

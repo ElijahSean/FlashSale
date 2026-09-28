@@ -3,16 +3,16 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 import { ConfigService } from '@nestjs/config';
 import type { FastifyRequest } from 'fastify';
 
-// Same bar as JWT_SECRET: shorter tokens can be guessed by brute force.
+// Same as JWT_SECRET: shorter tokens can be guessed.
 const MIN_TOKEN_LENGTH = 32;
 
 /**
- * Lets a request through only with the header `X-Admin-Token: <ADMIN_TOKEN>`. A separate header,
- * not a user JWT: an admin is not a buyer, and a buyer's token must never open this door.
+ * Only lets through requests with the header `X-Admin-Token: <ADMIN_TOKEN>`.
+ * Not a user token: a buyer's token must never open this.
  *
- * Why hashes and timingSafeEqual: a plain `===` stops at the first wrong character, so how long it
- * takes leaks how much of a guess was right. Hashing both sides gives two values of equal length,
- * and timingSafeEqual compares all of them, whatever the input.
+ * Why timingSafeEqual: `===` stops at the first wrong character, so its speed hints at how
+ * much of a guess was right. Hashing makes both sides the same length, and timingSafeEqual
+ * always compares everything.
  */
 @Injectable()
 export class AdminTokenGuard implements CanActivate {
@@ -20,7 +20,7 @@ export class AdminTokenGuard implements CanActivate {
 
   constructor(config: ConfigService) {
     const token = config.get<string>('ADMIN_TOKEN') ?? '';
-    // Rule 11 and fail closed: admin on with a weak or missing token stops the API at startup.
+    // Admin on with a weak or missing token: the API won't start.
     if (token.length < MIN_TOKEN_LENGTH) {
       throw new Error(
         `ENABLE_ADMIN=true needs ADMIN_TOKEN of at least ${MIN_TOKEN_LENGTH} characters. See .env.example.`,

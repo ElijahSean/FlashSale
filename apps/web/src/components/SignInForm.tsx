@@ -8,7 +8,7 @@ export interface Session {
   userId: string;
 }
 
-// Same limit as the API's LoginDto, so the common mistake is caught without a round trip.
+// Same limit as the API, so we catch it before sending.
 const MAX_LENGTH = 254;
 
 export function SignInForm({ onSignedIn }: { onSignedIn: (session: Session) => void }) {
@@ -19,8 +19,7 @@ export function SignInForm({ onSignedIn }: { onSignedIn: (session: Session) => v
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (pending) return;
-    // Only checks for empty and length. Lowercasing is the API's job (design rule 10): one place
-    // decides what a userId is, and the name shown afterwards is the one the token carries.
+    // Only checks empty and length. The API does the lowercasing (rule 10), in one place.
     const trimmed = value.trim();
     const problem = !trimmed
       ? LOGIN_ERRORS.EMPTY

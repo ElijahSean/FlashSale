@@ -2,8 +2,8 @@ import type { OrderStatus } from '../useOrderStatus';
 import { Spinner } from './Spinner';
 
 /**
- * reserved: the Redis gate gave this user a unit and the order is queued.
- * confirmed: the worker saved it in Postgres. Both come from GET /api/purchases/me.
+ * reserved: the user got a unit; the order is queued.
+ * confirmed: the worker saved it in Postgres. Both come from /api/purchases/me.
  */
 export function OrderStatusRow({ status, watching }: { status: OrderStatus; watching: boolean }) {
   return (
@@ -21,7 +21,7 @@ export function OrderStatusRow({ status, watching }: { status: OrderStatus; watc
           ) : (
             <span>
               <strong className="text-ink">Reserved.</strong>{' '}
-              {/* Polling gave up after ~10 s: the unit is safe in Redis, the save is just slow. */}
+              {/* We stopped asking after ~10 s. The unit is safe in Redis; saving is just slow. */}
               {watching
                 ? 'Confirming your order…'
                 : 'Your unit is held. The order will be saved shortly.'}

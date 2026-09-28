@@ -4,8 +4,8 @@ import { REDIS } from '../redis/redis.module';
 import { computeStatus, SaleStatus } from './sale-status';
 import { SALE_KEYS } from './sale.keys';
 
-// Design rule 7: this cache is the only sale state the API keeps in memory. One second is short
-// enough that the page is never meaningfully stale and long enough to absorb a refresh storm.
+// Rule 7: this 1 s cache is the only sale data the API keeps in memory.
+// Short enough to stay fresh, long enough to absorb a burst of page refreshes.
 export const CACHE_TTL_MS = 1_000;
 
 /** What Redis holds, read in one round trip. */
@@ -24,7 +24,7 @@ export interface SaleView {
   status: SaleStatus;
   startsAt: string;
   endsAt: string;
-  // The seeded total, so the page can show "42 of 100 left". Read from sale:config, never changed.
+  // Starting stock, so the page can show "42 of 100 left".
   initialStock: number;
   stockRemaining: number;
   serverTime: string;
@@ -39,8 +39,7 @@ export class SaleService {
 
   async getSale(): Promise<SaleView> {
     const s = await this.snapshot();
-    // Status and serverTime are worked out per request from the cached snapshot, so the clock
-    // shown to the user is never up to a second stale. Only the Redis read is cached.
+    // Only the Redis read is cached. Status and time are worked out fresh on every request.
     const now = Date.now();
     return {
       product: { name: s.productName, price: s.productPrice, imageUrl: s.productImageUrl },
@@ -54,13 +53,12 @@ export class SaleService {
   }
 
   /**
-   * Cached snapshot with single-flight.
+   * Cached snapshot, read once even when many requests arrive together ("single-flight").
    *
-   * A plain TTL cache has a gap: when it expires, every request that arrives before the first
-   * Redis reply also misses and reads Redis. Under a burst that is hundreds of reads. Keeping the
-   * pending promise means all of them wait on the one read already in progress.
+   * With a plain cache, every request that comes in while the cache is being refilled
+   * would also read Redis. Here they all share the one read already in progress.
    *
-   * A failed read is not cached, so the next request tries Redis again right away.
+   * A failed read is not cached, so the next request tries again.
    */
   private snapshot(): Promise<Snapshot> {
     if (this.cached && Date.now() < this.cached.expiresAt) {
@@ -80,10 +78,10 @@ export class SaleService {
   private async read(): Promise<Snapshot> {
     let results: [Error | null, unknown][] | null;
     try {
-      // MULTI so config and stock come from the same moment, in one round trip.
+      // MULTI: config and stock from the same moment, in one round trip.
       results = await this.redis.multi().hgetall(SALE_KEYS.config).get(SALE_KEYS.stock).exec();
     } catch {
-      // Design rule 4: Redis down or slow means 503, never a guessed answer.
+      // Rule 4: Redis down or slow means 503, never a guess.
       throw new ServiceUnavailableException('Sale state is unavailable');
     }
 
@@ -91,7 +89,7 @@ export class SaleService {
     const config = configReply?.[1] as Record<string, string> | undefined;
     const stock = stockReply?.[1] as string | null | undefined;
     if (configReply?.[0] || stockReply?.[0] || !config?.startsAt || stock == null) {
-      // Keys missing means the sale was reset while the API was running. Restarting reseeds it.
+      // Keys missing: the sale was reset while running. Restarting the API seeds it again.
       throw new ServiceUnavailableException('Sale is not configured');
     }
 

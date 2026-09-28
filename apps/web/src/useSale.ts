@@ -4,11 +4,10 @@ import { getSale, type Sale } from './api';
 export const SALE_POLL_MS = 2_000;
 
 /**
- * The sale, refreshed every 2 s, plus a clock that ticks every second for the countdown.
+ * The sale, refreshed every 2 s, plus a 1 s tick for the countdown.
  *
- * The next poll is scheduled only after the previous one finishes, so a slow API never has two
- * of our requests in flight. A failed poll keeps the last good data on screen (quietly, no
- * spinner) and just tries again; `failing` lets the page say so.
+ * The next refresh starts only after the last one finishes, so we never have two in flight.
+ * If one fails, the last good data stays on screen and we try again. `failing` tells the page.
  */
 export function useSale() {
   const [data, setData] = useState<{ sale: Sale; offsetMs: number } | null>(null);

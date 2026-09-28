@@ -1,16 +1,16 @@
-# One Dockerfile, four images (requirement 07). Each final stage is picked with a build target:
-#   api      NestJS API              (docker compose: api, 2 replicas)
-#   worker   BullMQ order worker     (docker compose: worker)
-#   migrate  one-shot schema update  (docker compose: migrate)
-#   web      nginx + the React build (docker compose: nginx)
-# The shared build stage installs and compiles once. Final stages carry only what runs.
+# One Dockerfile, four images. Compose picks one with "target":
+#   api      the API                  (api1, api2)
+#   worker   the order worker         (worker)
+#   migrate  creates the tables once  (migrate)
+#   web      nginx + the web page     (nginx)
+# Everything is built once in "build". Each final image only has what it needs to run.
 
 # ---------- build: every workspace, all dependencies ----------
 FROM node:24-alpine AS build
 WORKDIR /app
 
-# Manifests first: Docker caches this layer, so `npm ci` reruns only when dependencies change,
-# not on every code edit. npm needs every workspace's package.json to match the lockfile.
+# package.json files first: Docker caches this step, so `npm ci` only reruns when
+# dependencies change, not on every code edit.
 COPY package.json package-lock.json ./
 COPY apps/api/package.json apps/api/
 COPY apps/worker/package.json apps/worker/
@@ -20,15 +20,15 @@ RUN npm ci
 
 COPY tsconfig.base.json ./
 COPY apps apps
-# prisma.config.ts reads DATABASE_URL, but generate never connects: a placeholder is enough.
-# One generate writes the clients for both the API and the worker (same schema, see 04).
+# Prisma needs a DATABASE_URL but doesn't connect here, so a fake one is fine.
+# This makes the database clients for both the API and the worker.
 RUN DATABASE_URL=postgresql://build:build@localhost:5432/build npm run prisma:generate -w apps/api \
  && npm run build -w apps/api \
  && npm run build -w apps/worker \
  && npm run build -w apps/web
 
 # ---------- production dependencies only, per app ----------
-# Same manifests, `--omit=dev`: no TypeScript, Jest or Prisma CLI in the running images.
+# `--omit=dev`: no TypeScript, Jest or Prisma CLI in the running images.
 FROM node:24-alpine AS prod-deps
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -47,10 +47,10 @@ RUN npm ci --omit=dev -w apps/worker && npm cache clean --force
 FROM node:24-alpine AS api
 ENV NODE_ENV=production
 WORKDIR /app
-# The whole stage: root node_modules plus any package npm kept inside the workspace folder.
+# Copy all installed packages.
 COPY --from=api-deps /app ./
 COPY --from=build /app/apps/api/dist apps/api/dist
-# The node image ships an unprivileged "node" user. A break-in to the process is not root.
+# Run as the "node" user, not root. An attacker who gets in isn't root.
 USER node
 WORKDIR /app/apps/api
 EXPOSE 3000
@@ -67,15 +67,15 @@ WORKDIR /app/apps/worker
 CMD ["node", "dist/main.js"]
 
 # ---------- migrate ----------
-# Runs `prisma migrate deploy` once and exits: applies committed migrations, never creates new
-# ones. It needs the Prisma CLI, a dev dependency, so it starts from the build stage.
+# Runs `prisma migrate deploy` once and exits. It needs the Prisma CLI (a dev tool),
+# so it starts from the build stage.
 FROM build AS migrate
 USER node
 WORKDIR /app/apps/api
 CMD ["npx", "prisma", "migrate", "deploy"]
 
 # ---------- web ----------
-# nginx-unprivileged runs as a normal user and listens on 8080 (ports below 1024 need root).
+# nginx as a normal user, on port 8080 (ports below 1024 need root).
 FROM nginxinc/nginx-unprivileged:1.29-alpine AS web
 COPY apps/web/nginx.conf /etc/nginx/nginx.conf
 COPY --from=build /app/apps/web/dist /usr/share/nginx/html

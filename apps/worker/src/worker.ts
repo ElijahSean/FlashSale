@@ -5,18 +5,18 @@ import { OrderWriter } from './prisma';
 import { createSaveOrder, SaveResult } from './save-order';
 
 export interface OrderWorkerOptions {
-  /** BullMQ's connection. Must have maxRetriesPerRequest: null (BullMQ requires it for workers). */
+  /** BullMQ's connection. Needs maxRetriesPerRequest: null (BullMQ requires it). */
   connection: Redis;
   db: OrderWriter;
-  /** For the sale:buyers check. Can be the same client as `connection`. */
+  /** For the sale:buyers check. Can be the same client. */
   redis: Redis;
-  /** Jobs processed at the same time. Each is one small insert, so 10 keeps Postgres busy but calm. */
+  /** Jobs at the same time. Each is one small insert; 10 keeps Postgres busy but calm. */
   concurrency?: number;
 }
 
 /**
- * Starts consuming the orders queue. Retries, backoff and the failed set come from the job options
- * the API sets when it enqueues (apps/api/src/purchase/order-queue.ts), not from here.
+ * Starts taking jobs from the orders queue. Retry settings come from the API when it adds
+ * the job (order-queue.ts), not from here.
  */
 export function startOrderWorker({ connection, db, redis, concurrency = 10 }: OrderWorkerOptions) {
   const save = createSaveOrder({ db, redis });

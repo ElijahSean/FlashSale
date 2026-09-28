@@ -16,20 +16,19 @@ import type { AuthedRequest } from '../auth/auth.guard';
 const WINDOW_MS = 1000;
 
 /**
- * Caps requests per second, per IP address and (after AuthGuard) per user. Over the cap: 429,
- * and the route never runs, so a flood of clicks never reaches the Lua script.
+ * Limits requests per second, per IP and per user. Over the limit: 429, and the route never runs.
+ * So a flood of clicks never reaches the Lua script.
  *
- * How it counts (a "fixed window"): each second a key such as ratelimit:user:alice starts at 0.
- * INCR adds one per request and PEXPIRE ... NX gives the key a 1 s lifetime only when it is new, so
- * the count disappears one second after the first request. Both run in one MULTI (one round trip,
- * applied together). A caller can squeeze up to twice the limit across a window boundary; that
- * is fine for a cap meant to stop floods, and simpler than a sliding window.
+ * How it counts (a "fixed window"):
+ * - Each request adds 1 to a key like ratelimit:user:alice (INCR).
+ * - A new key gets a 1 s lifetime (PEXPIRE ... NX), so the count resets every second.
+ * - Both commands go in one MULTI: one round trip, applied together.
+ * - A caller can get up to twice the limit across a second boundary. Fine for stopping floods.
  *
- * The counters live in Redis, not in memory, so the cap holds across every API replica (rule 7).
- * If Redis cannot be reached the request gets 503 (rule 4): the purchase would fail anyway.
+ * Counters live in Redis, not memory, so the limit holds across all API copies (rule 7).
+ * Redis down: 503 (rule 4). The purchase would fail anyway.
  *
- * Use it after AuthGuard: @UseGuards(AuthGuard, RateLimitGuard). Without a user (demo login) only
- * the IP limit applies.
+ * Use after AuthGuard. With no user (demo login), only the IP limit applies.
  */
 @Injectable()
 export class RateLimitGuard implements CanActivate {
@@ -41,7 +40,7 @@ export class RateLimitGuard implements CanActivate {
     @Inject(REDIS) private readonly redis: Redis,
     config: ConfigService,
   ) {
-    // Env settings so a k6 run (07) is not throttled by accident.
+    // From env, so stress tests can raise them.
     this.perUser = readLimit(config, 'RATE_LIMIT_USER_PER_SEC', 5);
     this.perIp = readLimit(config, 'RATE_LIMIT_IP_PER_SEC', 50);
   }
@@ -65,7 +64,7 @@ export class RateLimitGuard implements CanActivate {
     try {
       const replies = await tx.exec();
       if (!replies) throw new Error('transaction aborted');
-      // Replies come in pairs (INCR, PEXPIRE); the counts are the INCR replies.
+      // Replies come in pairs (INCR, PEXPIRE). The counts are the INCR replies.
       return keys.map((_, i) => {
         const [err, count] = replies[i * 2];
         if (err) throw err;

@@ -5,8 +5,7 @@ import { HealthService } from './health.service';
 export class HealthController {
   constructor(private readonly health: HealthService) {}
 
-  // 503 when any dependency is down, so Docker healthchecks and nginx (requirement 07)
-  // take a broken API replica out of rotation. The body still names which part failed.
+  // 503 if anything is down, so Docker marks this copy unhealthy. The body says what failed.
   @Get()
   async get() {
     const report = await this.health.check();

@@ -1,8 +1,7 @@
 import { Controller, Get } from '@nestjs/common';
 import { SaleService, SaleView } from './sale.service';
 
-// Public on purpose: no AuthGuard. Anyone can see the product and whether the sale is live.
-// Served as GET /api/sale through the global "api" prefix (see app.setup.ts).
+// Public: no login needed to see the product and sale status. Served as GET /api/sale.
 @Controller('sale')
 export class SaleController {
   constructor(private readonly sale: SaleService) {}

@@ -4,9 +4,8 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/prisma/client';
 
 /**
- * Prisma 7 talks to Postgres through a driver adapter (node-postgres here) instead of a
- * bundled binary engine. No eager $connect: the pool opens on first query, so the API
- * boots even when Postgres is down and /health reports it.
+ * Prisma 7 talks to Postgres through the "pg" driver.
+ * It connects on the first query, so the API starts even if Postgres is down (/health shows it).
  */
 @Injectable()
 export class PrismaService extends PrismaClient implements OnApplicationShutdown {
@@ -16,8 +15,7 @@ export class PrismaService extends PrismaClient implements OnApplicationShutdown
     });
   }
 
-  // After the HTTP server has stopped, like the queue (see OrderQueue): /me calls still in flight
-  // during a shutdown finish with a working database connection.
+  // Closed after the HTTP server stops (like the queue), so last requests still have a database.
   async onApplicationShutdown() {
     await this.$disconnect();
   }

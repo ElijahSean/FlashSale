@@ -2,23 +2,21 @@ import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import Redis from 'ioredis';
 import { waitForRedisReady } from '../redis/redis-client';
 import { REDIS } from '../redis/redis.module';
-// import type: SaleConfig is an interface, erased at runtime, so decorator metadata cannot
-// reference it (TS1272 with isolatedModules).
+// "import type" because SaleConfig only exists at compile time (TypeScript error TS1272 otherwise).
 import type { SaleConfig } from './sale-config';
 import { SALE_KEYS } from './sale.keys';
 
 export const SALE_CONFIG = Symbol('SALE_CONFIG');
 
 /**
- * Writes the sale into Redis on startup, but only the keys that do not exist yet.
+ * Writes the sale into Redis at startup, but only keys that don't exist yet.
  *
- * Why "only if missing": a restart or a second replica must never reset stock that has already
- * been sold. HSETNX and SET ... NX are "set if not exists" commands, so each one is a single
- * atomic create. No value is read first and written back, which keeps design rule 1 intact:
- * stock is created here, but only the Lua gate (03) ever changes it.
+ * Why: a restart or a second API copy must never reset stock that was already sold.
+ * HSETNX and SET ... NX mean "set only if missing". Nothing is read then written back,
+ * so rule 1 holds: stock is created here, but only the Lua gate changes it.
  *
- * MULTI sends all of them as one unit, so two replicas booting at the same moment cannot
- * interleave. Whichever runs first creates the keys; the other one changes nothing.
+ * MULTI sends them together. If two API copies start at once, the first creates the keys
+ * and the second changes nothing.
  */
 @Injectable()
 export class SaleSeedService implements OnModuleInit {
@@ -43,7 +41,7 @@ export class SaleSeedService implements OnModuleInit {
     }
   }
 
-  /** Returns true when this call created the stock key, meaning this was the first boot. */
+  /** True if this call created the stock (the first start). */
   async seed(): Promise<boolean> {
     const c = this.config;
     const fields: Record<string, string> = {
@@ -62,7 +60,7 @@ export class SaleSeedService implements OnModuleInit {
     tx.set(SALE_KEYS.stock, c.initialStock, 'NX');
     const results = await tx.exec();
 
-    // Last reply is the SET NX: "OK" when created, null when the key already existed.
+    // Last reply is the SET NX: "OK" if created, null if it already existed.
     const stockReply = results?.at(-1);
     if (!stockReply || stockReply[0]) throw stockReply?.[0] ?? new Error('Sale seed was aborted');
     return stockReply[1] === 'OK';

@@ -4,8 +4,7 @@ import Redis from 'ioredis';
 import { createPrisma } from './prisma';
 import { startOrderWorker } from './worker';
 
-// Same shared root .env as the API. In containers (07) the variables come from the environment
-// and this file is simply absent.
+// Same root .env as the API. In Docker there is no .env; settings come from Compose.
 config({ path: resolve(__dirname, '../../../.env') });
 
 function required(name: string): string {
@@ -15,8 +14,8 @@ function required(name: string): string {
 }
 
 async function main() {
-  // Unlike the API, the worker is patient on purpose: maxRetriesPerRequest null and the offline
-  // queue on mean it waits through a Redis outage and carries on. Nobody is waiting on it.
+  // Unlike the API, the worker is patient: it waits out a Redis outage and carries on.
+  // No buyer is waiting on it.
   const connection = new Redis(required('REDIS_URL'), { maxRetriesPerRequest: null });
   const prisma = createPrisma(required('DATABASE_URL'));
   const worker = startOrderWorker({ connection, db: prisma, redis: connection });
@@ -25,17 +24,15 @@ async function main() {
   worker.on('completed', (job, result) => console.log(`Order ${job.data.userId}: ${result}`));
   worker.on('failed', (job, err) => {
     const tries = `${job?.attemptsMade}/${job?.opts.attempts ?? 1}`;
-    // Prisma puts the cause ("Can't reach database server ...") on the last line of a long
-    // message. Log that line; the full message stays on the job as its failedReason.
+    // Prisma puts the real cause on the last line of its message. Log just that line.
     const reason = err.message.trim().split('\n').pop();
     console.error(`Order ${job?.data.userId} failed (try ${tries}): ${reason}`);
   });
-  // Connection problems. Logged, not fatal: BullMQ reconnects on its own.
+  // Connection problems: log only. BullMQ reconnects by itself.
   worker.on('error', (err) => console.error(`Worker error: ${err.message}`));
 
-  // Graceful shutdown: close() stops taking new jobs and waits for the ones in progress, so a
-  // deploy or `docker compose stop` never cuts an insert in half. A job that was cut anyway
-  // (a crash) is picked up again later, and the idempotent insert makes that safe (rule 5).
+  // Clean shutdown: stop taking jobs and finish the running ones, so no insert is cut in half.
+  // After a crash, the job runs again, and the safe insert makes that fine (rule 5).
   let closing = false;
   const shutdown = async (signal: string) => {
     if (closing) return;

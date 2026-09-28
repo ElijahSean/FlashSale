@@ -5,10 +5,8 @@ import { AppModule } from './app.module';
 import { configureApp, createAdapter } from './app.setup';
 
 async function bootstrap() {
-  // Fastify instead of the default Express adapter: lower per-request overhead,
-  // which is where a flash sale spends its time.
-  // Read from the real environment (set by Compose), not from .env: the adapter is built before
-  // ConfigModule loads that file. Development leaves it unset, so no proxy is trusted.
+  // Fastify instead of Express: less work per request, which matters in a flash sale.
+  // TRUST_PROXY comes from Docker's environment. .env isn't loaded yet at this point.
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     createAdapter({ trustProxy: process.env.TRUST_PROXY }),
@@ -17,10 +15,9 @@ async function bootstrap() {
   app.enableShutdownHooks();
 
   const port = Number(process.env.PORT ?? 3000);
-  // 0.0.0.0 so nginx can reach the API from another container (requirement 07).
-  // backlog: how many new connections may wait for the process to accept them. Node's default is
-  // 511. In a flash sale thousands arrive in the same instant; past the limit the kernel drops
-  // them and the caller only retries a second later. The container's somaxconn (4096) caps it.
+  // 0.0.0.0 so nginx can reach the API from another container.
+  // backlog: how many new connections can wait in line. Node's default is 511.
+  // In a flash sale thousands arrive at once; extra ones are dropped and retried a second later.
   await app.listen({ port, host: '0.0.0.0', backlog: 4096 });
   console.log(`API listening on port ${port} (FastifyAdapter)`);
 }

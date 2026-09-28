@@ -11,8 +11,7 @@ import { adminModule } from './admin/admin.module';
 
 @Module({
   imports: [
-    // One .env at the repo root, shared with docker compose. In containers (07) the
-    // variables come from the environment and this file is simply absent.
+    // Reads the .env at the repo root. In Docker there is no .env; settings come from Compose.
     ConfigModule.forRoot({ isGlobal: true, envFilePath: resolve(__dirname, '../../../.env') }),
     RedisModule,
     PrismaModule,
@@ -20,7 +19,7 @@ import { adminModule } from './admin/admin.module';
     SaleModule,
     AuthModule,
     PurchaseModule,
-    // Test-only reset route (07), loaded only when ENABLE_ADMIN=true.
+    // Test-only reset route, only when ENABLE_ADMIN=true.
     adminModule(),
   ],
 })

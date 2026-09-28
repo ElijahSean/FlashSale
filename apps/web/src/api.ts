@@ -1,7 +1,6 @@
 import { clockOffset } from './clock';
 
-// Types mirror the API's answers (apps/api: SaleView, PurchaseResult, MyPurchase). Kept as a copy
-// on purpose: one small file is easier to explain than a shared package for four types.
+// Types copied from the API's answers. A copy is simpler than a shared package for four types.
 export type SaleStatus = 'upcoming' | 'active' | 'sold_out' | 'ended';
 
 export interface Sale {
@@ -27,9 +26,8 @@ const PURCHASE_RESULTS = [
 type PurchaseResult = (typeof PURCHASE_RESULTS)[number];
 
 /**
- * Every way a Buy click can end. The first five come from the Lua gate (via the body's `result`),
- * the rest from HTTP status or from the network. NETWORK is "we do not know": the request may or
- * may not have reached the gate, so the page asks /me afterwards.
+ * Every way a Buy click can end. The first five come from the Lua gate, the rest from the HTTP
+ * status or the network. NETWORK means "we don't know if it reached the gate", so we ask /me.
  */
 export type BuyOutcome =
   PurchaseResult | 'RATE_LIMITED' | 'UNAVAILABLE' | 'SESSION_EXPIRED' | 'NETWORK';
@@ -38,25 +36,25 @@ export type LoginAnswer =
   | { ok: true; accessToken: string; userId: string }
   | { ok: false; reason: 'INVALID' | 'RATE_LIMITED' | 'UNAVAILABLE' };
 
-/** /me can also say "your token expired" or "could not tell right now". */
+/** /me can also say "token expired" or "can't tell right now". */
 export type MeAnswer = MyPurchase | 'SESSION_EXPIRED' | 'UNKNOWN';
 
-// Empty means same origin: the Vite proxy in dev, nginx in the full stack (07).
+// Empty means same origin: Vite forwards /api in dev, nginx does in Docker.
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
 
-// A buy normally answers in milliseconds. Past this, give up waiting and ask /me instead.
+// A buy normally takes milliseconds. After this long, stop waiting and ask /me.
 const TIMEOUT_MS = 10_000;
 
-/** fetch with a timeout. Throws on network failure or timeout; HTTP errors come back as responses. */
+/** fetch with a timeout. Throws on network error or timeout; HTTP errors come back normally. */
 function call(path: string, init: RequestInit & { token?: string } = {}) {
   const { token, ...rest } = init;
   const headers = new Headers(rest.headers);
-  // Identity travels only in the token (design rule 8). The body never carries a userId.
+  // Who you are is only in the token (rule 8). The body never has a userId.
   if (token) headers.set('Authorization', `Bearer ${token}`);
   return fetch(`${BASE_URL}${path}`, { ...rest, headers, signal: AbortSignal.timeout(TIMEOUT_MS) });
 }
 
-/** The sale, plus how far this browser's clock is from the server's (see clock.ts). */
+/** The sale, plus how far this browser's clock is off from the server's (see clock.ts). */
 export async function getSale(): Promise<{ sale: Sale; offsetMs: number }> {
   const sentAt = Date.now();
   const res = await call('/api/sale');
@@ -91,17 +89,17 @@ export async function buy(token: string): Promise<BuyOutcome> {
   try {
     res = await call('/api/purchases', { method: 'POST', token });
   } catch {
-    // Timed out or never reached the server. Not "failed": the gate may have said yes.
+    // Timed out or no connection. Not "failed": the gate may have said yes.
     return 'NETWORK';
   }
   if (res.status === 401) return 'SESSION_EXPIRED';
   if (res.status === 429) return 'RATE_LIMITED';
 
-  // 201, 409, 410 and 403 carry the gate's own answer. Reading `result` rather than the status is
-  // what tells NOT_STARTED from ENDED, which share 403.
+  // 201, 409, 410 and 403 include the gate's answer. We read `result`, because
+  // NOT_STARTED and ENDED are both 403.
   const body = (await res.json().catch(() => null)) as { result?: string } | null;
   const result = PURCHASE_RESULTS.find((r) => r === body?.result);
-  // Anything else (503, 500, a proxy error page) is "please try again".
+  // Anything else (503, 500, a proxy error) means "please try again".
   return result ?? 'UNAVAILABLE';
 }
 

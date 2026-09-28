@@ -1,5 +1,4 @@
-// Flat config for the whole monorepo. Prettier owns formatting, so eslint-config-prettier
-// turns off every ESLint rule that would fight it.
+// Lint rules for the whole repo. Prettier handles formatting, so those ESLint rules are off.
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import prettier from 'eslint-config-prettier';
@@ -14,14 +13,13 @@ export default tseslint.config(
     ignores: ['apps/web/**'],
     languageOptions: { globals: { ...globals.node, ...globals.jest } },
   },
-  // The web app runs in the browser. The hooks rules catch the React mistakes that type checks
-  // miss: missing effect dependencies, hooks called conditionally, state set during render.
+  // Web app: browser globals, plus React hooks rules that catch mistakes types don't.
   {
     files: ['apps/web/**/*.{ts,tsx}'],
     ...reactHooks.configs.flat.recommended,
     languageOptions: { globals: globals.browser },
   },
-  // k6 scripts run inside k6, which provides __ENV (the -e and container environment values).
+  // k6 scripts: k6 provides __ENV.
   {
     files: ['stress/**/*.js'],
     languageOptions: { globals: { __ENV: 'readonly' } },

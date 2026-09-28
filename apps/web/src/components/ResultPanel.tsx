@@ -4,7 +4,7 @@ import { MESSAGES, TONE_CLASSES } from '../messages';
 export function ResultPanel({ outcome }: { outcome: BuyOutcome | null }) {
   const message = outcome && MESSAGES[outcome];
   const tone = message && TONE_CLASSES[message.tone];
-  // The live region is always in the page, so screen readers announce the message when it appears.
+  // Always in the page, so screen readers read the message out when it appears.
   return (
     <div aria-live="polite">
       {message && tone && (

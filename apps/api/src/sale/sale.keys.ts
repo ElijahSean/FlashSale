@@ -1,5 +1,4 @@
-// Redis key names in one place, so the seeder, the status endpoint and the purchase gate (03)
-// cannot drift apart. The table in docs/design-rules.md describes each key.
+// Redis key names in one place, so every part uses the same ones. See docs/design-rules.md.
 export const SALE_KEYS = {
   config: 'sale:config',
   stock: 'sale:stock',

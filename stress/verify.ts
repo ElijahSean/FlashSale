@@ -1,19 +1,18 @@
-// Reconciliation check (requirement 07): after a stress run, do Redis and Postgres agree, and was
-// anything oversold or lost? Prints each check and PASS or FAIL; exits 1 on FAIL.
+// After a stress run: do Redis and Postgres agree? Was anything oversold or lost?
+// Prints each check, then PASS or FAIL (exit code 1).
 //
 //   npm run verify
 //
-// Reads the stack published by `npm run stress:up` (Redis and Postgres on 127.0.0.1), using the
-// REDIS_URL and DATABASE_URL in the root .env. Run by Node directly (type stripping, no build).
+// Uses REDIS_URL and DATABASE_URL from the root .env. Node runs this .ts file directly.
 import { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
 import pg from 'pg';
 
-// Copies of the contracts in apps/api/src/sale/sale.keys.ts and purchase/order-queue.ts.
+// Copied from the API (sale.keys.ts and order-queue.ts).
 const KEYS = { config: 'sale:config', stock: 'sale:stock', buyers: 'sale:buyers' };
 const ORDERS_QUEUE = 'orders';
 
-// The worker saves orders a few milliseconds behind the API. Wait up to this long for it.
+// The worker saves orders a moment after the API. Wait up to this long.
 const DRAIN_TIMEOUT_MS = 60_000;
 
 interface Check {
@@ -44,24 +43,23 @@ async function main() {
 
     const checks: Check[] = [
       { name: 'queue drained', ok: pending === 0, detail: `${pending} jobs still pending` },
-      // A failed job is a buyer the worker gave up on: a unit sold with no order.
+      // A failed job means a unit sold with no order.
       { name: 'no failed jobs', ok: failed === 0, detail: `${failed} in the failed set` },
-      // Rule 1: stock can never go below zero.
+      // Rule 1: stock never below zero.
       { name: 'stock is not negative', ok: stock >= 0, detail: `stock ${stock}` },
-      // Every unit is either still in stock or held by exactly one buyer: nothing oversold, nothing
-      // lost (rule 6).
+      // Every unit is either in stock or held by one buyer: nothing oversold or lost (rule 6).
       {
         name: 'stock + buyers = initial stock',
         ok: stock + buyers.size === initialStock,
         detail: `${stock} + ${buyers.size} vs ${initialStock}`,
       },
-      // Rule 2, both guards agree: each Redis buyer has its one Postgres order.
+      // Rule 2: every Redis buyer has its Postgres order.
       {
         name: 'every buyer has an order',
         ok: missingOrders.length === 0,
         detail: `${missingOrders.length} missing, e.g. ${missingOrders.slice(0, 3).join(', ')}`,
       },
-      // And no order exists for a unit that was given back (the gap noted in LEARNINGS 04).
+      // And no order exists for a unit that was given back.
       {
         name: 'every order has a buyer',
         ok: ordersWithoutBuyer.length === 0,
@@ -84,7 +82,7 @@ async function main() {
   }
 }
 
-/** Polls until no job is waiting, active or delayed, or the timeout passes. Returns what is left. */
+/** Waits until the queue is empty or time runs out. Returns how many jobs are left. */
 async function waitForDrain(queue: Queue): Promise<number> {
   const deadline = Date.now() + DRAIN_TIMEOUT_MS;
   for (;;) {

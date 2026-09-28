@@ -1,6 +1,5 @@
-// The contract with the API. A copy, not an import, so the worker builds and ships on its own.
-// The contract test in order-worker.int.spec.ts fails if these drift from the API's values
-// (apps/api/src/purchase/order-queue.ts and apps/api/src/sale/sale.keys.ts).
+// Names shared with the API. Copied, not imported, so the worker builds on its own.
+// A test fails if they ever differ from the API's.
 export const ORDERS_QUEUE = 'orders';
 export const BUYERS_KEY = 'sale:buyers';
 

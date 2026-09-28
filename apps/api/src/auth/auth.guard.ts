@@ -2,29 +2,28 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 import { JwtService } from '@nestjs/jwt';
 import type { FastifyRequest } from 'fastify';
 
-/** A request that passed AuthGuard. The only place a protected route learns who the user is. */
+/** A request that passed AuthGuard. req.user is the only place a route learns who the user is. */
 export type AuthedRequest = FastifyRequest & { user: { id: string } };
 
 /**
- * Only this algorithm is accepted. A JWT's header names the algorithm it was signed with, and a
- * forged token can claim "none" (no signature) or a different one. Pinning the list means the
- * server decides how tokens are checked, never the token itself.
+ * The only algorithm we accept. A token names its own algorithm, and a fake one could say "none"
+ * (no signature). Fixing it here means the server decides how to check, not the token.
  */
 export const JWT_ALGORITHM = 'HS256';
 
 /**
- * Protects a route: no valid token, no entry (401).
+ * Protects a route: no valid token, 401.
  *
- * How it works. At demo login the API signs a token (a JWT) that says "sub = eli@x.com, expires at
- * T". The signature is an HMAC of the token's content made with JWT_SECRET, which only the server
- * knows. Here the guard recomputes that HMAC. If anyone changed the content (say, the sub to
- * another user) the signatures no longer match and the token is refused. An expired token is
- * refused too. No database lookup is needed, which keeps every API replica stateless (rule 7).
+ * How it works:
+ * - At login the API signs a token (JWT) saying "user = eli@x.com, expires at T".
+ * - The signature is made with JWT_SECRET, which only the server knows.
+ * - Here we check the signature again. If anyone edited the token, it no longer matches: 401.
+ * - Expired tokens get 401 too.
+ * - No database lookup, so every API copy can check tokens on its own (rule 7).
  *
- * Rule 8: the guard puts the token's sub on req.user.id, and protected routes read the user only
- * from there, never from the body.
+ * Rule 8: the user id goes on req.user.id. Routes read it from there, never from the body.
  *
- * This is the seam for real auth later: swap the verification here, and every route stays as it is.
+ * For real login later, only this check changes. The routes stay the same.
  */
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -37,12 +36,12 @@ export class AuthGuard implements CanActivate {
 
     let sub: unknown;
     try {
-      // Checks the signature and the expiry (exp). Throws on any problem.
+      // Checks signature and expiry. Throws on any problem.
       ({ sub } = await this.jwt.verifyAsync<{ sub?: unknown }>(token, {
         algorithms: [JWT_ALGORITHM],
       }));
     } catch {
-      // One message for every reason, so a caller learns nothing about why it failed.
+      // Same message for every reason, so an attacker learns nothing.
       throw new UnauthorizedException('Invalid or expired token');
     }
     if (typeof sub !== 'string' || sub === '') {
@@ -54,7 +53,7 @@ export class AuthGuard implements CanActivate {
   }
 }
 
-/** "Bearer <token>" to "<token>". Anything else counts as no token. */
+/** "Bearer abc" gives "abc". Anything else means no token. */
 function bearerToken(header: string | undefined): string | undefined {
   const [scheme, token] = header?.split(' ') ?? [];
   return scheme === 'Bearer' && token ? token : undefined;

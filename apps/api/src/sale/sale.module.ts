@@ -9,7 +9,7 @@ import { SaleService } from './sale.service';
   controllers: [SaleController],
   providers: [
     {
-      // Parsed once at startup. A bad .env throws here and the API does not start.
+      // Checked once at startup. A bad .env stops the API here.
       provide: SALE_CONFIG,
       inject: [ConfigService],
       useFactory: (config: ConfigService) => parseSaleConfig((key) => config.get<string>(key)),
@@ -17,7 +17,7 @@ import { SaleService } from './sale.service';
     SaleSeedService,
     SaleService,
   ],
-  // The admin reset (07) restores the .env values from this parsed config.
+  // The admin reset uses this to restore the .env values.
   exports: [SALE_CONFIG],
 })
 export class SaleModule {}

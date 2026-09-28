@@ -4,12 +4,12 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth.controller';
 import { AuthGuard, JWT_ALGORITHM } from './auth.guard';
 
-// Short on purpose: the token is only needed for the sale, and there are no refresh tokens.
+// 30 minutes: long enough for the sale. There are no refresh tokens.
 const TOKEN_TTL_SECONDS = 30 * 60;
-// An HMAC key shorter than this is guessable by brute force.
+// A shorter secret can be guessed.
 const MIN_SECRET_LENGTH = 32;
 
-/** Rule 11: the secret comes from env. Missing or too short stops the API at startup. */
+/** Rule 11: the secret comes from env. Missing or too short: the API won't start. */
 function readJwtSecret(config: ConfigService): string {
   const secret = config.get<string>('JWT_SECRET');
   if (!secret || secret.length < MIN_SECRET_LENGTH) {
@@ -32,7 +32,7 @@ function readJwtSecret(config: ConfigService): string {
   ],
   controllers: [AuthController],
   providers: [AuthGuard],
-  // Other modules protect their routes with AuthGuard, which needs JwtService.
+  // Other modules use AuthGuard, which needs JwtService.
   exports: [AuthGuard, JwtModule],
 })
 export class AuthModule {}

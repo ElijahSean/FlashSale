@@ -14,11 +14,9 @@ import { AdminService } from './admin.service';
 export class AdminModule {}
 
 /**
- * The admin routes exist only when ENABLE_ADMIN is exactly "true". Otherwise the module is never
- * loaded, so /api/admin/reset is a plain 404: nothing there to guess a token for.
+ * The admin route exists only when ENABLE_ADMIN is exactly "true". Otherwise it's a 404.
  *
- * A function, not the string form registerWhen(AdminModule, 'ENABLE_ADMIN'): that form counts a
- * missing variable as on (it only checks the value is not "false"). Off must be the default.
+ * We pass a function, not just 'ENABLE_ADMIN': the short form treats a missing variable as on.
  */
 export const adminModule = () =>
   ConditionalModule.registerWhen(AdminModule, (env) => env.ENABLE_ADMIN === 'true');

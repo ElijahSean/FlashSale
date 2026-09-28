@@ -1,10 +1,8 @@
-# Stress-test settings (requirement 07), layered on top of docker-compose.yml. The npm scripts pass
-# both files, for example `npm run stress:up` runs
-#   docker compose -f docker-compose.yml -f docker-compose.stress.yml up -d --build --wait
-# Plain `docker compose up` never reads this file, so admin stays off and the limits stay low.
+# Stress test settings, added on top of docker-compose.yml by the npm stress scripts.
+# Plain `docker compose up` never reads this file, so admin stays off and limits stay low.
 
 services:
-  # Published on 127.0.0.1 so `npm run verify` on this machine can read the final state.
+  # Opened on this machine only, so `npm run verify` can read them.
   redis:
     ports:
       - '127.0.0.1:6379:6379'
@@ -12,22 +10,20 @@ services:
     ports:
       - '127.0.0.1:5432:5432'
 
-  # Added to both API replicas' settings.
+  # Added to both API copies.
   api1: &stress-api
     environment:
-      # Each k6 script resets the sale in its setup() (POST /api/admin/reset).
+      # Each k6 script resets the sale first.
       ENABLE_ADMIN: 'true'
       ADMIN_TOKEN: ${ADMIN_TOKEN:?set in .env}
-      # k6 runs in one container, so every virtual user shares one IP address. The normal per-IP
-      # limit (50/s) would turn the stampede into 429s and test the limiter, not the gate. The
-      # per-user limit is raised so each greedy user's 20 parallel requests all reach Lua.
+      # All k6 users share one IP. The normal limit (50/s) would just return 429s.
+      # The per-user limit is raised so each greedy user's 20 requests reach Lua.
       RATE_LIMIT_IP_PER_SEC: 1000000
       RATE_LIMIT_USER_PER_SEC: 1000
   api2: *stress-api
 
-  # The load generator. Only runs on demand: `docker compose ... run --rm k6 run /scripts/<name>.js`.
-  # It calls nginx like a browser would, so the test covers the whole path: nginx, both API
-  # replicas, Redis, the queue and the worker.
+  # The load tester. Only runs when asked. It calls nginx like a browser, so the whole
+  # system is tested: nginx, both API copies, Redis, the queue and the worker.
   k6:
     image: grafana/k6:2.3.0
     profiles: [k6]

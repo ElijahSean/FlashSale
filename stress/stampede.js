@@ -1,6 +1,6 @@
 // Stampede: 10,000 different users go for 100 units at once.
-// Proves rule 1 (never oversell) across two API replicas: exactly 100 get 201, all the others
-// get 410 SOLD_OUT, and nobody gets a 5xx.
+// Proves rule 1 (never oversell) with two API copies: exactly 100 get 201,
+// the rest get 410 SOLD_OUT, and nobody gets a 5xx.
 //
 //   npm run stress:stampede      then      npm run verify
 import exec from 'k6/execution';
@@ -12,9 +12,9 @@ const STOCK = 100;
 export const options = {
   scenarios: {
     stampede: {
-      // 500 virtual users share the 10,000 iterations: each iteration is one new user who logs in
-      // and buys once. Tokens are fetched per iteration, not in setup(): k6 copies setup data into
-      // every virtual user, and 10,000 tokens x 500 users would need about 1 GB of memory.
+      // 500 virtual users share 10,000 runs. Each run is a new user who logs in and buys once.
+      // Login happens per run, not in setup(): k6 copies setup data to every virtual user,
+      // and 10,000 tokens x 500 users would need about 1 GB.
       executor: 'shared-iterations',
       vus: 500,
       iterations: USERS,
@@ -34,13 +34,13 @@ export const options = {
   summaryTrendStats: ['avg', 'med', 'p(95)', 'p(99)', 'max'],
 };
 
-// Open now (started 1 s ago) for an hour, whatever the .env window says.
+// Sale open now, for an hour, whatever .env says.
 export function setup() {
   return resetSale({ stock: STOCK, startsInSeconds: -1, durationSeconds: 3600 });
 }
 
 export default function () {
-  // iterationInTest is unique across all virtual users: 10,000 distinct user names.
+  // iterationInTest is unique, so we get 10,000 different users.
   const token = login(`stampede-${exec.scenario.iterationInTest}`);
   if (token) buy(token);
 }

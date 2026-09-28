@@ -1,5 +1,4 @@
-// First load: grey blocks in the shape of the real cards (docs/design/first-load-skeleton), so
-// the layout does not jump when data arrives. motion-reduce:animate-none stops the pulse.
+// First load: grey blocks shaped like the real cards, so nothing jumps when data arrives.
 const block = 'rounded-lg bg-[#E6ECF5]';
 const card = 'flex flex-col rounded-2xl border border-line bg-white';
 
@@ -32,7 +31,7 @@ export function Skeleton({ failing }: { failing: boolean }) {
           <div className={`${block} h-13 rounded-xl`} />
         </div>
       </section>
-      {/* Only after a failed first load: say why the page is still grey. */}
+      {/* Only if the first load failed: say why the page is still grey. */}
       {failing && (
         <p role="status" className="text-sm text-muted md:col-span-2">
           Cannot reach the sale right now. Retrying…
