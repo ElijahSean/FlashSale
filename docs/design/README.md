@@ -65,8 +65,12 @@ Disabled labels: "Buying…" (pending), "Purchased", "Opens soon", "Sale ended",
 | 403 NOT_STARTED | neutral | Not open yet | The sale has not started. Try again when the countdown ends. |
 | 403 ENDED | neutral | Sale ended | The sale window has closed. |
 | 429 | error (red) | Slow down | Too many attempts. Wait a moment and try again. |
-| 503 | error | Please try again | Your attempt did not go through. Nothing was reserved. |
+| 503 | error | Please try again | Your attempt did not go through. Please try again. |
 | 401 | neutral | Session expired | Please sign in again to continue. (return to sign-in) |
+| No reply (timeout or network) | error | Connection problem | We could not confirm your attempt. If it went through, your order status appears below. |
+
+The 503 body does not say "nothing was reserved": a call that timed out may still have reserved a unit.
+The page asks `/me` afterwards, so a reserved unit still shows up.
 
 Tone colors (background / border / title): success `#EAF1FE / #095AE9 / #0848C0`, warn `#FFF6E0 / #FFAE10 / #6B4200`,
 neutral `#F1F4F8 / #99A0AB / #0B192D`, error `#FDECEC / #D93A3A / #8F1D1D`. The result area is `aria-live="polite"`.
@@ -77,7 +81,7 @@ Uses `GET /api/purchases/me`. There is no "Check my purchase" button.
 
 - **After sign-in:** call `/me` once. If the user already bought, show the status row and set the Buy button to "Purchased".
 - **After a successful buy (201):** show "**Reserved.** Confirming your order…" with a small spinner, poll `/me` about once a second, and switch to "**Confirmed.** Your order is saved." with a check icon. Stop polling when confirmed, or after about 10 seconds.
-- **After a timeout or network error on buy:** call `/me` once to find out whether the purchase went through.
+- **After a 409, a 503, or no reply on buy:** call `/me` to find out whether the user holds a unit.
 - Hidden when the user has no purchase. The row is `aria-live="polite"`.
 
 ## Loading states

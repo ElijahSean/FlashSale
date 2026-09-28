@@ -40,7 +40,7 @@ Tick what this change touches so Plan reads the matching rule in `docs/design-ru
 
 - [ ] Touches stock or buyers → only the Lua script changes them (rules 1, 2, 3)
 - [ ] Touches Redis calls → timeouts and errors return 503, never a fallback (rule 4)
-- [ ] Touches the queue or worker → `jobId = userId`, insert is `ON CONFLICT DO NOTHING` (rule 5)
+- [ ] Touches the queue or worker → job id `order-<userId>`, insert is `ON CONFLICT DO NOTHING` (rule 5)
 - [ ] Touches enqueue after a reservation → failure runs the release script (rule 6)
 - [ ] Touches API memory or caching → no sale state in process memory except the 1 s status cache (rule 7)
 - [ ] Touches a protected endpoint → identity from `req.user.id`, never the body (rule 8)

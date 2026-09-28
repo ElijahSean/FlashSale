@@ -6,7 +6,7 @@ Rules every requirement and every change must respect. If a change would break o
 2. **One unit per user, enforced twice.** Redis `sale:buyers` set during the sale; Postgres `UNIQUE(userId)` permanently.
 3. **The Redis gate decides.** Purchase outcomes come only from the Lua script result. Postgres never decides who wins.
 4. **Fail closed.** If Redis is unreachable or times out, return 503. Never fall back to a non-atomic path.
-5. **Idempotent everywhere a retry can happen.** BullMQ `jobId = userId`; worker insert uses `ON CONFLICT DO NOTHING`.
+5. **Idempotent everywhere a retry can happen.** BullMQ job id `order-<userId>` (one job per user; BullMQ rejects ids that are all digits or contain `:`); worker insert uses `ON CONFLICT DO NOTHING`.
 6. **No lost stock.** If enqueueing fails after a successful reservation, run the compensating script (stock +1, remove buyer) before returning 503.
 7. **Stateless API.** No sale state in process memory, except the short (~1 s) cache for `GET /api/sale`.
 8. **Identity comes from the token.** Protected endpoints read `req.user.id` set by `AuthGuard`, never a userId from the body.

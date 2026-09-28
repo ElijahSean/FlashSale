@@ -57,7 +57,8 @@ with a real `JWT_SECRET` (32+ characters; the API refuses to start without it).
 - `npm run lint`: ESLint for the whole repo; `npm run format`: Prettier (code only)
 - `npm run prisma:migrate -w apps/api -- --name <change>`: create and apply a migration
 - `npm run prisma:generate -w apps/api`: regenerate the Prisma clients for the API and the worker (gitignored, under `src/generated`)
-- `docker compose exec redis redis-cli DEL sale:config sale:stock sale:buyers`: reset the sale; the next API start reseeds it from `.env`
+- `docker compose exec redis redis-cli DEL sale:config sale:stock sale:buyers`: reset the Redis sale only; the next API start reseeds it from `.env`. Orders in Postgres and queue jobs (kept 24 h) survive, so a returning user's order is skipped
+- Clean start (keeps the tables): `docker compose exec redis redis-cli FLUSHALL` and `docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "TRUNCATE orders"'`, then restart the API
 - Integration tests (`*.int.spec.ts`) start their own Redis and Postgres with Testcontainers, so Docker must be running for `npm test`
 - API and worker tests run Jest with `--experimental-vm-modules`: Prisma 7 loads its query engine with a dynamic `import()`
 
